@@ -186,8 +186,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     address token,
     uint amount,
     address gauge,
-    uint tokenId,
-    address _metaBribe
+    uint tokenId
   ) external lock {
     require(amount > 0);
     if (!isReward[token]) {
@@ -197,9 +196,6 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       );
       require(rewards.length < MAX_REWARD_TOKENS, "too many rewards tokens");
     }
-    require(IVoter(voter).isGauge(gauge), "invalid gauge address");
-    require(tokenId > 0);
-    require(IMetaBribe(_metaBribe).isPartner(msg.sender), "not a partner");
     // bribes kick in at the start of next bribe period
     uint adjustedTstamp = getEpochStart(block.timestamp);
     uint epochRewards = tokenRewardsPerEpoch[token][adjustedTstamp];
