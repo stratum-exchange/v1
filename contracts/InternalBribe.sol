@@ -6,13 +6,14 @@ import "contracts/interfaces/IBribe.sol";
 import "contracts/interfaces/IERC20.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IVotingEscrow.sol";
+import "contracts/Constants.sol";
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with Voter.vote())
-contract InternalBribe is IBribe {
+contract InternalBribe is IBribe, Constants {
   address public immutable voter; // only voter can modify balances (since it only happens on vote())
   address public immutable _ve; // 天使のたまご
 
-  uint internal constant DURATION = 1 days; // rewards are released over the voting period
+  uint internal constant DURATION = SECONDS_PER_EPOCH; // rewards are released over the voting period
   uint internal constant MAX_REWARD_TOKENS = 16;
 
   uint internal constant PRECISION = 10 ** 18;
@@ -79,13 +80,13 @@ contract InternalBribe is IBribe {
   }
 
   function _bribeStart(uint timestamp) internal pure returns (uint) {
-    return timestamp - (timestamp % (1 days));
+    return timestamp - (timestamp % SECONDS_PER_EPOCH);
   }
 
   function getEpochStart(uint timestamp) public pure returns (uint) {
     uint bribeStart = _bribeStart(timestamp);
     uint bribeEnd = bribeStart + DURATION;
-    return timestamp < bribeEnd ? bribeStart : bribeStart + 1 days;
+    return timestamp < bribeEnd ? bribeStart : bribeStart + SECONDS_PER_EPOCH;
   }
 
   /**
