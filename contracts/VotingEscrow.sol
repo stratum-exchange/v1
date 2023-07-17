@@ -53,9 +53,7 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
     bool noPullback; // can't be transferred back by the lender
     bool noWithdraw; // can't withdraw STRAT when lockup time is over
     bool noApprove; // can't change approve (needs to be true in case noPullback=false)
-    //bool noIncreaseAmount; // borrower can't add STRAT to this veSTRAT
     bool noIncreaseUnlockTime; // can't increase unlocktime/votingPower
-    //bool noDepositFor; // won't accept anyone's STRAT deposits to this veSTRAT
     bool noMerge; // can't merge with other veSTRAT (needs to be true in case noPullback=false)
   }
 
@@ -815,7 +813,6 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
   /// @param _tokenId lock NFT
   /// @param _value Amount to add to user's lock
   function deposit_for(uint _tokenId, uint _value) external nonreentrant {
-    //require(_restrictions_permit_deposit_for(_tokenId), "deposit_for restricted");
     LockedBalance memory _locked = locked[_tokenId];
 
     require(_value > 0); // dev: need non-zero value
@@ -890,7 +887,6 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
   /// @notice Deposit `_value` additional tokens for `_tokenId` without modifying the unlock time
   /// @param _value Amount of tokens to deposit and add to the lock
   function increase_amount(uint _tokenId, uint _value) external nonreentrant {
-    //require(_restrictions_permit_increase_amount(_tokenId), "increase_amount restricted");
     assert(_isApprovedOrOwner(msg.sender, _tokenId));
 
     LockedBalance memory _locked = locked[_tokenId];
