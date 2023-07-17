@@ -124,8 +124,7 @@ contract Minter is IMinter, Constants {
   // update period can only be called once per cycle (1 week)
   function update_period() external returns (uint) {
     uint _period = active_period;
-    // if (block.timestamp >= _period + WEEK && initializer == address(0)) {
-    if (initializer == address(0)) {
+    if (block.timestamp >= _period + WEEK && initializer == address(0)) {
       // only trigger if new week
       _period = (block.timestamp / WEEK) * WEEK;
       active_period = _period;
