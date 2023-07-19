@@ -319,6 +319,11 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
     require(_isApprovedOrOwner(_sender, _tokenId));
     // Clear approval. Throws if `_from` is not the current owner
     _clearApproval(_from, _tokenId);
+    // Remove restrictions when returning to lender, so they won't become
+    // active anymore due to another transfer
+    if (_to == restrictions[_tokenId].lender) {
+      delete restrictions[_tokenId];
+    }
     // Remove NFT. Throws if `_tokenId` is not a valid NFT
     _removeTokenFrom(_from, _tokenId);
     // auto re-delegate
@@ -1588,16 +1593,12 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
   /// @notice For retrieving back a lent veSTRAT. Cleans Restrictions and approval.
   /// @dev _transferFrom() resets approval so restrictions[_tokenId].lender is the only valid target
   function pullBack(uint _tokenId) external {
-    // pull back
     _transferFrom(
       ownerOf(_tokenId),
       restrictions[_tokenId].lender,
       _tokenId,
       msg.sender
     );
-
-    // remove restrictions
-    delete restrictions[_tokenId];
   }
 
   /// @notice Restrictions are inactive if they are expired or as long as token owner
