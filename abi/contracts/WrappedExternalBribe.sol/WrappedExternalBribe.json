@@ -403,11 +403,6 @@
         "internalType": "uint256",
         "name": "tokenId",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_metaBribe",
-        "type": "address"
       }
     ],
     "name": "notifyRewardAmount",
