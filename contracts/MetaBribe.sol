@@ -484,9 +484,13 @@ contract MetaBribe is IMetaBribe, Constants {
         uint weight = get_metabribe_weight(_tokenId, _gauge, week_cursor);
         uint totalWeight = get_metabribe_total_weight(week_cursor);
 
-        rebase =
+        if (totalWeight == 0) {
+          rebase = 0;
+        } else {
+          rebase =
           (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
           1000;
+        }
 
         week_cursor += WEEK;
       }
@@ -559,10 +563,13 @@ contract MetaBribe is IMetaBribe, Constants {
         uint weight = get_metabribe_weight(_tokenId, _gauge, week_cursor);
         uint totalWeight = get_metabribe_total_weight(week_cursor);
 
-        rebase =
+        if (totalWeight == 0) {
+          rebase = 0;
+        } else {
+          rebase =
           (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
           1000;
-
+        }
         week_cursor += WEEK;
       }
     }
