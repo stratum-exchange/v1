@@ -1531,7 +1531,12 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
   //     full possession. Member can already vote/earn etc. and eventually also increase lock time, so everyone can see,
   //     allocation can't get dumped when this veSTRAT goes into member's full possession.
 
+  /// @dev Mapping of tokenId to LendingRestrictions
   mapping(uint => LendingRestrictions) public restrictions;
+
+  /// @dev ve lending publicly available or restricted to team?
+  bool public publicLending = false;
+
 
   /// @notice Lends the token to a borrower with least permissions and the ability
   ///         to actively pull it back later by transfer (lender has allowance that can't be revoked).
@@ -1555,6 +1560,9 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
       _isApprovedOrOwner(msg.sender, _tokenId),
       "not owner, approved or operator"
     );
+
+    // ve lending feature restricted to team wallet
+    require(msg.sender == team || publicLending, "only team");
 
     // there may be no active restrictions (i.e. veSTRAT is borrowed)
     require(!isBorrowed(_tokenId), "token already lent");
@@ -1656,5 +1664,10 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
       restrictions[_tokenId].noPullback ||
       _to == restrictions[_tokenId].lender ||
       !isBorrowed(_tokenId);
+  }
+
+  function setPublicLending(bool _active) external {
+    require(msg.sender == team);
+    publicLending = _active;
   }
 }
