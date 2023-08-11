@@ -1573,6 +1573,7 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
       // of 'claim' to that veSTRAT token
       require(_noApprove, "pullback requires disabling approve");
       require(_noMerge, "pullback requires disabling merge");
+      require(_noWithdraw, "pullback requires disabling withdraw");
     }
 
     // plausibility check if expiry date is in the past. Would otherwise be like transfer, because
