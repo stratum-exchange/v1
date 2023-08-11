@@ -1567,6 +1567,10 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
       require(_noMerge, "pullback requires disabling merge");
     }
 
+    // plausibility check if expiry date is in the past. Would otherwise be like transfer, because
+    // restrictions wouldn't even become active.
+    require (_expiresAt > block.timestamp, "already expired");
+
     address owner = ownerOf(_tokenId);
 
     restrictions[_tokenId] = LendingRestrictions({
