@@ -393,12 +393,21 @@ contract MetaBribe is IMetaBribe, Constants {
     address pool = voter.poolForGauge(_gauge);
     uint pool_votes = voter.weights(pool);
     uint partner_votes = check_partner_votes();
-    uint votesByNFTAndPool = voter.votesByNFTAndPool(_tokenId, pool);
+    address xBribe = voter.external_bribes(_gauge);
+    address wxBribe = wxBribeFactory.oldBribeToNew(xBribe);
+    (, , address[] memory _gauges, ) = IWrappedExternalBribe(wxBribe)
+      .getMetaBribe(_tokenId, week_cursor);
+    bool isDepositedByTokenId = false;
+    for (uint i = 0; i < _gauges.length; i++) {
+      if (_gauges[i] == _gauge) {
+        isDepositedByTokenId = true;
+      }
+    }
     if (
+      user_bribes_value > 0 &&
       total_bribes_value > 0 &&
-      pool_votes > 0 &&
       partner_votes > 0 &&
-      votesByNFTAndPool > 0
+      isDepositedByTokenId == true
     ) {
       uint weight = ((2 * user_bribes_value * 1000) / total_bribes_value) +
         ((pool_votes * 1000) / partner_votes);
