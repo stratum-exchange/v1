@@ -4,6 +4,7 @@ pragma solidity 0.8.13;
 /// ============ Imports ============
 
 import { IStratum } from "contracts/interfaces/IStratum.sol";
+import { IVotingEscrow } from "contracts/interfaces/IVotingEscrow.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol"; // OZ: MerkleProof
 
 /// @title MerkleClaim
@@ -16,6 +17,8 @@ contract MerkleClaim {
   IStratum public immutable STRAT;
   /// @notice ERC20-claimee inclusion root
   bytes32 public immutable merkleRoot;
+  /// @notice for lockdrop using create_lock_for()
+  address public immutable votingEscrow;
 
   /// ============ Mutable storage ============
 
@@ -27,9 +30,11 @@ contract MerkleClaim {
   /// @notice Creates a new MerkleClaim contract
   /// @param _strat address
   /// @param _merkleRoot of claimees
-  constructor(address _strat, bytes32 _merkleRoot) {
+  constructor(address _strat, bytes32 _merkleRoot, address _votingEscrow) {
     STRAT = IStratum(_strat);
     merkleRoot = _merkleRoot;
+    votingEscrow = _votingEscrow;
+    STRAT.approve(votingEscrow, type(uint256).max);
   }
 
   /// ============ Events ============
@@ -37,7 +42,7 @@ contract MerkleClaim {
   /// @notice Emitted after a successful token claim
   /// @param to recipient of claim
   /// @param amount of tokens claimed
-  event Claim(address indexed to, uint256 amount);
+  event Claim(address indexed to, uint256 amount, uint256 tokenId);
 
   /// ============ Functions ============
 
@@ -59,9 +64,10 @@ contract MerkleClaim {
     hasClaimed[msg.sender] = true;
 
     // Claim tokens for address
-    require(STRAT.claim(msg.sender, amount), "CLAIM_FAILED");
+    require(STRAT.claim(address(this), amount), "CLAIM_FAILED");
+    uint256 tokenId = IVotingEscrow(votingEscrow).create_lock_for(amount, 52 weeks, msg.sender);
 
     // Emit claim event
-    emit Claim(msg.sender, amount);
+    emit Claim(msg.sender, amount, tokenId);
   }
 }
