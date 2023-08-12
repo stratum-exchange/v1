@@ -5,6 +5,8 @@ import "contracts/libraries/Math.sol";
 import "contracts/ExternalBribe.sol";
 import "contracts/interfaces/IERC20.sol";
 import "contracts/interfaces/IGauge.sol";
+import "contracts/interfaces/IPair.sol";
+import "contracts/interfaces/IRouter.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IVotingEscrow.sol";
 import "contracts/interfaces/IWrappedExternalBribe.sol";
@@ -15,6 +17,9 @@ import "contracts/Constants.sol";
 contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   address public immutable voter;
   address public immutable _ve;
+  address public router;
+  address public governor;
+  address public currency;
   ExternalBribe public underlying_bribe;
 
   uint internal constant DURATION = SECONDS_PER_EPOCH; // rewards are released over the voting period
@@ -48,13 +53,21 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     address indexed reward,
     uint epoch,
     uint amount,
+    uint value,
     address gauge,
     uint tokenId
   );
   event ClaimRewards(address indexed from, address indexed reward, uint amount);
 
-  constructor(address _voter, address _old_bribe) {
+  constructor(
+    address _voter,
+    address _old_bribe,
+    address _router,
+    address _currency
+  ) {
     voter = _voter;
+    router = _router;
+    currency = _currency;
     _ve = IVoter(_voter)._ve();
     underlying_bribe = ExternalBribe(_old_bribe);
 
@@ -74,6 +87,24 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     _unlocked = 2;
     _;
     _unlocked = 1;
+  }
+
+  function setRouter(address _newRouter) public {
+    require(msg.sender == governor);
+    require(_newRouter != address(0));
+    router = _newRouter;
+  }
+
+  function setGovernor(address _governor) public {
+    require(msg.sender == governor);
+    require(_governor != address(0));
+    governor = _governor;
+  }
+
+  function setCurrency(address _newCurrency) public {
+    require(msg.sender == governor);
+    require(_newCurrency != address(0));
+    currency = _newCurrency;
   }
 
   function _bribeStart(uint timestamp) internal pure returns (uint) {
@@ -178,7 +209,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     uint ts
   ) public view returns (address[] memory, uint[] memory, address[] memory, uint) {
     MetaBribes storage mb = metaBribesPerEpoch[tokenId][ts];
-    return (mb.bribedTokens, mb.amounts, mb.gauges, mb.tokenId);
+    return (mb.bribedTokens, mb.amounts, mb.values, mb.gauges, mb.tokenId);
   }
 
   // emits a bribe by a user
@@ -210,16 +241,35 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       rewards.push(token);
     }
 
+    address pair = IRouter(router).pairFor(token, currency, true);
+    uint amountS;
+    uint amountV;
+    if (IRouter(router).isPair(pair)) {
+      amountS = IPair(pair).current(token, amount);
+    }
+    pair = IRouter(router).pairFor(token, currency, false);
+    if (IRouter(router).isPair(pair)) {
+      amountV = IPair(pair).current(token, amount);
+    }
+    uint value;
+    if (token == currency) {
+      value = amount;
+    } else {
+      value = amountS > amountV ? amountS : amountV;
+    }
+
     if (metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.length == 0) {
       // 1st bribe submission from this tokenId in this epoch
       MetaBribes memory metaBribe = MetaBribes(
         new address[](1),
+        new uint[](1),
         new uint[](1),
         new address[](1),
         tokenId
       );
       metaBribe.bribedTokens[0] = token;
       metaBribe.amounts[0] = amount;
+      metaBribe.values[0] = value;
       metaBribe.gauges[0] = gauge;
       metaBribesPerEpoch[tokenId][adjustedTstamp] = metaBribe;
     }
@@ -227,6 +277,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       // 2nd+ bribe submission from this tokenId in this epoch
       metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.push(token);
       metaBribesPerEpoch[tokenId][adjustedTstamp].amounts.push(amount);
+      metaBribesPerEpoch[tokenId][adjustedTstamp].values.push(value);
       metaBribesPerEpoch[tokenId][adjustedTstamp].gauges.push(gauge);
     }
 
@@ -235,6 +286,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       token,
       adjustedTstamp,
       amount,
+      value,
       gauge,
       tokenId
     );
@@ -247,6 +299,10 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   ) external {
     require(msg.sender == IVotingEscrow(_ve).team(), "only team");
     require(rewards[i] == oldToken);
+    require(
+      IVoter(voter).isWhitelisted(newToken),
+      "newToken must be whitelisted"
+    );
     isReward[oldToken] = false;
     isReward[newToken] = true;
     rewards[i] = newToken;

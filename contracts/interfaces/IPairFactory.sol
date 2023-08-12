@@ -4,7 +4,11 @@ pragma solidity 0.8.13;
 interface IPairFactory {
   function allPairsLength() external view returns (uint);
 
+  function getPairByIndex(uint idx) external view returns (address);
+
   function isPair(address pair) external view returns (bool);
+
+  function is3pool(address pair) external view returns (bool);
 
   function pairCodeHash() external pure returns (bytes32);
 

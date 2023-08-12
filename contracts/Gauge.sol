@@ -9,6 +9,7 @@ import "contracts/interfaces/IBribe.sol";
 import "contracts/multipool/ISwap.sol";
 import "contracts/interfaces/IGauge.sol";
 import "contracts/interfaces/IPair.sol";
+import "contracts/interfaces/IPairFactory.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IVotingEscrow.sol";
 
@@ -140,7 +141,10 @@ contract Gauge is IGauge, Constants {
   }
 
   function _claimFees() internal returns (uint claimed0, uint claimed1) {
-    require(IVoter(voter).is3poolGauge(address(this)) == false, "Not a 3pool");
+    require(
+      IVoter(voter).is3poolGauge(address(this)) == false,
+      "This is 3pool"
+    );
     if (!isForPair) {
       return (0, 0);
     }
@@ -175,6 +179,8 @@ contract Gauge is IGauge, Constants {
   function claimFeesFor3Pool(
     address _swapAddress
   ) external lock returns (uint claimed0, uint claimed1, uint claimed2) {
+    address factory = IVoter(voter).factory();
+    require(IPairFactory(factory).is3pool(_swapAddress), "Not a 3pool");
     return _claimFeesFor3Pool(_swapAddress);
   }
 
@@ -427,7 +433,7 @@ contract Gauge is IGauge, Constants {
           );
           IVotingEscrow(_ve).create_lock_for(
             lockAmount,
-              SECONDS_PER_EPOCH * 52 * 1,
+            SECONDS_PER_EPOCH * 52 * 1,
             msg.sender
           );
           _safeTransfer(tokens[i], account, _reward - lockAmount);
@@ -748,6 +754,10 @@ contract Gauge is IGauge, Constants {
     require(msg.sender == voter, "!allowed");
     if (!_is3pool) {
       _claimFees();
+    } else {
+      address _LPToken = IVoter(voter).poolForGauge(address(this));
+      address _swapAddress = IVoter(voter)._LPTokenTo3Pool(_LPToken);
+      _claimFeesFor3Pool(_swapAddress);
     }
     require(token != stake);
     require(amount > 0);
@@ -797,6 +807,10 @@ contract Gauge is IGauge, Constants {
   ) external {
     require(msg.sender == IVotingEscrow(_ve).team(), "only team");
     require(rewards[i] == oldToken);
+    require(
+      IVoter(voter).isWhitelisted(newToken),
+      "newToken must be whitelisted"
+    );
     isReward[oldToken] = false;
     isReward[newToken] = true;
     rewards[i] = newToken;

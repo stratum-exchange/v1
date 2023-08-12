@@ -5,6 +5,7 @@ interface IWrappedExternalBribe {
   struct MetaBribes {
     address[] bribedTokens;
     uint[] amounts;
+    uint[] values;
     address[] gauges;
     uint tokenId;
   }
@@ -16,5 +17,14 @@ interface IWrappedExternalBribe {
   function getMetaBribe(
     uint tokenId,
     uint ts
-  ) external view returns (address[] memory, uint[] memory, address[] memory, uint);
+  )
+    external
+    view
+    returns (
+      address[] memory,
+      uint[] memory,
+      uint[] memory,
+      address[] memory,
+      uint
+    );
 }

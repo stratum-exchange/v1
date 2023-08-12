@@ -7,7 +7,8 @@ import "contracts/interfaces/IBribeFactory.sol";
 import "contracts/interfaces/IWrappedExternalBribeFactory.sol";
 import "contracts/interfaces/IGauge.sol";
 import "contracts/interfaces/IGaugeFactory.sol";
-import "contracts/interfaces/IERC20.sol";
+// import "contracts/interfaces/IERC20.sol";
+import "contracts/multipool/ISwap.sol";
 import "contracts/interfaces/IMinter.sol";
 import "contracts/interfaces/IPair.sol";
 import "contracts/interfaces/IPairFactory.sol";
@@ -124,11 +125,13 @@ contract Voter is IVoter, Constants {
 
   function setGovernor(address _governor) public {
     require(msg.sender == governor);
+    require(_governor != address(0));
     governor = _governor;
   }
 
   function setEmergencyCouncil(address _council) public {
     require(msg.sender == emergencyCouncil);
+    require(_council != address(0));
     emergencyCouncil = _council;
   }
 
@@ -210,6 +213,7 @@ contract Voter is IVoter, Constants {
         uint256 _poolWeight = (_weights[i] * _weight) / _totalVoteWeight;
         require(votes[_tokenId][_pool] == 0);
         require(_poolWeight != 0);
+        require(isAlive[_gauge], "gauge already dead");
         _updateFor(_gauge);
 
         poolVote[_tokenId].push(_pool);
@@ -428,6 +432,22 @@ contract Voter is IVoter, Constants {
 
   function poolByIndex(uint _index) external view returns (address) {
     return pools[_index];
+  }
+
+  function _LPTokenTo3Pool(
+    address _LPToken
+  ) public view returns (address swap) {
+    uint allPairsLength = IPairFactory(factory).allPairsLength();
+    for (uint i = 0; i < allPairsLength; i++) {
+      address pair = IPairFactory(factory).getPairByIndex(i);
+      if (IPairFactory(factory).is3pool(pair)) {
+        (, , , , , , address lpToken) = ISwap(pair).swapStorage();
+        if (lpToken == _LPToken) {
+          swap = pair;
+        }
+      }
+    }
+    require(swap != address(0));
   }
 
   function votesByNFTAndPool(

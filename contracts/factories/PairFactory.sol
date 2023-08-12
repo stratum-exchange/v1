@@ -45,6 +45,10 @@ contract PairFactory is IPairFactory {
     return allPairs.length;
   }
 
+  function getPairByIndex(uint idx) external view returns (address) {
+    return allPairs[idx];
+  }
+
   /// normal pools + 3pools
 
   function setPauser(address _pauser) external {

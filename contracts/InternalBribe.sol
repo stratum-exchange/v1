@@ -338,6 +338,10 @@ contract InternalBribe is IBribe, Constants {
   ) external {
     require(msg.sender == IVotingEscrow(_ve).team(), "only team");
     require(rewards[i] == oldToken);
+    require(
+      IVoter(voter).isWhitelisted(newToken),
+      "newToken must be whitelisted"
+    );
     isReward[oldToken] = false;
     isReward[newToken] = true;
     rewards[i] = newToken;

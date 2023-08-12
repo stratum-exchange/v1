@@ -4,6 +4,8 @@ pragma solidity 0.8.13;
 interface IVoter {
   function _ve() external view returns (address);
 
+  function factory() external view returns (address);
+
   function length() external view returns (uint);
 
   function gauges(address pool) external view returns (address);
@@ -19,6 +21,8 @@ interface IVoter {
   function is3poolGauge(address _gauge) external view returns (bool);
 
   function poolForGauge(address _gauge) external view returns (address);
+
+  function _LPTokenTo3Pool(address _LPToken) external view returns (address);
 
   function votesByNFTAndPool(
     uint _tokenId,

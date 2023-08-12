@@ -76,16 +76,19 @@ contract MetaBribe is IMetaBribe, Constants {
 
   function setGovernor(address _governor) public {
     require(msg.sender == governor);
+    require(_governor != address(0));
     governor = _governor;
   }
 
   function setRouter(address _newRouter) public {
     require(msg.sender == governor);
+    require(_newRouter != address(0));
     router = IRouter(_newRouter);
   }
 
   function setCurrency(address _newCurrency) public {
     require(msg.sender == governor);
+    require(_newCurrency != address(0));
     currency = _newCurrency;
   }
 
@@ -136,6 +139,7 @@ contract MetaBribe is IMetaBribe, Constants {
   }
 
   function removePartnerToken(address _partner, uint _tokenId) external {
+    require(msg.sender == governor);
     for (uint i = 0; i < partnerToTokenIds[_partner].length; i++) {
       if (partnerToTokenIds[_partner][i] == _tokenId) {
         partnerToTokenIds[_partner][i] = 0;
@@ -395,7 +399,7 @@ contract MetaBribe is IMetaBribe, Constants {
     uint partner_votes = check_partner_votes();
     address xBribe = voter.external_bribes(_gauge);
     address wxBribe = wxBribeFactory.oldBribeToNew(xBribe);
-    (, , address[] memory _gauges, ) = IWrappedExternalBribe(wxBribe)
+    (, , , address[] memory _gauges, ) = IWrappedExternalBribe(wxBribe)
       .getMetaBribe(_tokenId, week_cursor);
     bool isDepositedByTokenId = false;
     for (uint i = 0; i < _gauges.length; i++) {
@@ -575,7 +579,7 @@ contract MetaBribe is IMetaBribe, Constants {
         if (totalWeight == 0) {
           rebase = 0;
         } else {
-          rebase =
+          rebase +=
           (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
           1000;
         }
@@ -637,6 +641,7 @@ contract MetaBribe is IMetaBribe, Constants {
   // Once off event on contract initialize
   function setDepositor(address _depositor) external {
     require(msg.sender == depositor);
+    require(_depositor != address(0));
     depositor = _depositor;
   }
 }
