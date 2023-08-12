@@ -529,7 +529,7 @@ contract WETH is ERC20 {
   event Deposit(address indexed dst, uint wad);
   event Withdrawal(address indexed src, uint wad);
 
-  constructor() ERC20("Wrappeed Ether", "WETH") {}
+  constructor() ERC20("Wrapped Mantle", "WMNT") {}
 
   function deposit() public payable {
     _mint(msg.sender, msg.value);
