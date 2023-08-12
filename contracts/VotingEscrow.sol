@@ -317,6 +317,9 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
     require(attachments[_tokenId] == 0 && !voted[_tokenId], "attached");
     // Check requirements
     require(_isApprovedOrOwner(_sender, _tokenId));
+    if (_to == _from) {
+      return;
+    }
     // Clear approval. Throws if `_from` is not the current owner
     _clearApproval(_from, _tokenId);
     // Remove restrictions when returning to lender, so they won't become
