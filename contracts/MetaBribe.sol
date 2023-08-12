@@ -49,14 +49,12 @@ contract MetaBribe is IMetaBribe, Constants {
   IVoter public immutable voter;
   IWrappedExternalBribeFactory public immutable wxBribeFactory;
   IRouter public router;
-  address public currency; // some USD token that is known by router (e.g. USDC)
 
   constructor(
     address _voting_escrow,
     address _voter,
     address _wxBribeFactory,
-    address _router,
-    address _currency
+    address _router
   ) {
     uint _t = (block.timestamp / WEEK) * WEEK;
     start_time = _t;
@@ -68,7 +66,6 @@ contract MetaBribe is IMetaBribe, Constants {
     voter = IVoter(_voter);
     wxBribeFactory = IWrappedExternalBribeFactory(_wxBribeFactory);
     router = IRouter(_router);
-    currency = _currency;
     depositor = msg.sender;
     governor = msg.sender;
     require(IERC20(_token).approve(_voting_escrow, type(uint).max));
@@ -86,12 +83,6 @@ contract MetaBribe is IMetaBribe, Constants {
     router = IRouter(_newRouter);
   }
 
-  function setCurrency(address _newCurrency) public {
-    require(msg.sender == governor);
-    require(_newCurrency != address(0));
-    currency = _newCurrency;
-  }
-
   function addPartners(
     address[] memory _partners,
     uint[] memory _tokenIds
@@ -99,15 +90,32 @@ contract MetaBribe is IMetaBribe, Constants {
     require(_partners.length == _tokenIds.length, "array size differs");
     require(msg.sender == governor);
 
-    for (uint newPartnerIdx = 0; newPartnerIdx < _partners.length; newPartnerIdx++) {
-
+    for (
+      uint newPartnerIdx = 0;
+      newPartnerIdx < _partners.length;
+      newPartnerIdx++
+    ) {
       // only accept tokens with voting power (plausibility check)
-      require(IVotingEscrow(voting_escrow).balanceOfNFT(_tokenIds[newPartnerIdx]) > 0, "zero voting power");
+      require(
+        IVotingEscrow(voting_escrow).balanceOfNFT(_tokenIds[newPartnerIdx]) > 0,
+        "zero voting power"
+      );
 
       // prevent duplicate entries
-      for (uint existingPartnerIdx = 0; existingPartnerIdx < partners.length; existingPartnerIdx++) {
-        for (uint veTokenIdx = 0; veTokenIdx < partnerToTokenIds[partners[existingPartnerIdx]].length; veTokenIdx++) {
-          if (partnerToTokenIds[partners[existingPartnerIdx]][veTokenIdx] == _tokenIds[newPartnerIdx]) {
+      for (
+        uint existingPartnerIdx = 0;
+        existingPartnerIdx < partners.length;
+        existingPartnerIdx++
+      ) {
+        for (
+          uint veTokenIdx = 0;
+          veTokenIdx < partnerToTokenIds[partners[existingPartnerIdx]].length;
+          veTokenIdx++
+        ) {
+          if (
+            partnerToTokenIds[partners[existingPartnerIdx]][veTokenIdx] ==
+            _tokenIds[newPartnerIdx]
+          ) {
             revert("already partner token");
           }
         }
@@ -117,8 +125,9 @@ contract MetaBribe is IMetaBribe, Constants {
       if (!isPartner(_partners[newPartnerIdx])) {
         partners.push(_partners[newPartnerIdx]);
       }
-      partnerToTokenIds[_partners[newPartnerIdx]].push(_tokenIds[newPartnerIdx]);
-
+      partnerToTokenIds[_partners[newPartnerIdx]].push(
+        _tokenIds[newPartnerIdx]
+      );
     }
   }
 
@@ -271,7 +280,9 @@ contract MetaBribe is IMetaBribe, Constants {
       );
   }
 
-  function getWrappedExternalBribeByPool(uint _poolIndex) public view returns (address) {
+  function getWrappedExternalBribeByPool(
+    uint _poolIndex
+  ) public view returns (address) {
     address pool = voter.poolByIndex(_poolIndex);
     address gauge = voter.gauges(pool);
     address xBribe = voter.external_bribes(gauge);
@@ -305,19 +316,10 @@ contract MetaBribe is IMetaBribe, Constants {
     _checkpoint_total_supply();
   }
 
-  /// @notice sums up USD value of bribes associated with partner tokenId in epoch _ts
+  /// @notice sums up values of bribes associated with partner tokenId in epoch _ts
   function check_user_bribes_value(
     uint tokenId,
     uint _ts
-  ) public view returns (uint) {
-    return check_user_bribes_value_in(tokenId, _ts, currency);
-  }
-
-  /// @notice sums up currency value of bribes associated with partner tokenId in epoch _ts
-  function check_user_bribes_value_in(
-    uint tokenId,
-    uint _ts,
-    address _currency
   ) public view returns (uint) {
     if (!isPartner(IVotingEscrow(voting_escrow).ownerOf(tokenId))) {
       return 0;
@@ -326,46 +328,31 @@ contract MetaBribe is IMetaBribe, Constants {
     uint pools_len = voter.length();
     for (uint i = 0; i < pools_len; i++) {
       address _wxBribe = getWrappedExternalBribeByPool(i);
-      (address[] memory _tokenAddresses, uint[] memory _amounts, , ) = IWrappedExternalBribe(
-        _wxBribe
-      ).getMetaBribe(tokenId, _ts);
+      (, , uint[] memory values, , ) = IWrappedExternalBribe(_wxBribe)
+        .getMetaBribe(tokenId, _ts);
 
-      for (uint j = 0; j < _tokenAddresses.length; j++) {
-        if (_amounts[j] > 0) {
-          if (_tokenAddresses[j] == _currency) {
-            bribes_value += _amounts[j];
-          } else {
-            (uint value,) = router.getAmountOut(_amounts[j], _tokenAddresses[j], _currency);
-            bribes_value += value;
-          }
+      for (uint j = 0; j < values.length; j++) {
+        if (values[j] > 0) {
+          bribes_value += values[j];
         }
       }
     }
     return bribes_value;
   }
 
-  /// @notice sums up USD value of all bribes
-  function check_total_bribes_value() public view returns (uint) {
-    return check_total_bribes_value_in(currency);
-  }
-
-  /// @notice sums up currency value of all bribes
-  function check_total_bribes_value_in(address _currency) public view returns (uint) {
+  /// @notice sums up values of all bribes
+  function check_total_bribes_value(uint _ts) public view returns (uint) {
     uint bribes_value = 0;
-    uint pools_len = voter.length();
-    for (uint i = 0; i < pools_len; i++) {
-      address wxBribe = getWrappedExternalBribeByPool(i);
-      uint rewardsListLength = IWrappedExternalBribe(wxBribe)
-        .rewardsListLength();
-      for (uint j = 0; j < rewardsListLength; j++) {
-        address reward = IWrappedExternalBribe(wxBribe).getRewardByIndex(j);
-        uint token_balance = IERC20(reward).balanceOf(wxBribe);
-        if (token_balance > 0) {
-          if (reward == _currency) {
-            bribes_value += token_balance;
-          } else {
-            (uint value, ) = router.getAmountOut(token_balance, reward, _currency);
-            bribes_value += value;
+    uint veNFTAmount = IVotingEscrow(voting_escrow).tokenId();
+    for (uint i = 0; i < veNFTAmount; i++) {
+      uint pools_len = voter.length();
+      for (uint j = 0; j < pools_len; j++) {
+        address _wxBribe = getWrappedExternalBribeByPool(j);
+        (, , uint[] memory values, , ) = IWrappedExternalBribe(_wxBribe)
+          .getMetaBribe(i, _ts);
+        for (uint k = 0; k < values.length; k++) {
+          if (values[k] > 0) {
+            bribes_value += values[k];
           }
         }
       }
@@ -392,7 +379,7 @@ contract MetaBribe is IMetaBribe, Constants {
     uint week_cursor
   ) public view returns (uint) {
     uint user_bribes_value = check_user_bribes_value(_tokenId, week_cursor);
-    uint total_bribes_value = check_total_bribes_value();
+    uint total_bribes_value = check_total_bribes_value(week_cursor);
 
     address pool = voter.poolForGauge(_gauge);
     uint pool_votes = voter.weights(pool);
@@ -425,12 +412,20 @@ contract MetaBribe is IMetaBribe, Constants {
     uint totalWeight = 0;
     uint pools_len = voter.length();
     for (uint partnerIdx = 0; partnerIdx < partners.length; partnerIdx++) {
-      for (uint partnerTokenIdx = 0; partnerTokenIdx < partnerToTokenIds[partners[partnerIdx]].length; partnerTokenIdx++) {
+      for (
+        uint partnerTokenIdx = 0;
+        partnerTokenIdx < partnerToTokenIds[partners[partnerIdx]].length;
+        partnerTokenIdx++
+      ) {
         uint nftID = partnerToTokenIds[partners[partnerIdx]][partnerTokenIdx];
         for (uint poolIdx = 0; poolIdx < pools_len; poolIdx++) {
           address pool = voter.poolByIndex(poolIdx);
           address gauge = voter.gauges(pool);
-          uint weightByTokenId = get_metabribe_weight(nftID, gauge, week_cursor);
+          uint weightByTokenId = get_metabribe_weight(
+            nftID,
+            gauge,
+            week_cursor
+          );
           if (weightByTokenId > 0) {
             totalWeight += weightByTokenId;
           }
@@ -500,9 +495,9 @@ contract MetaBribe is IMetaBribe, Constants {
         if (totalWeight == 0) {
           rebase = 0;
         } else {
-          rebase =
-          (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
-          1000;
+          rebase +=
+            (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
+            1000;
         }
 
         week_cursor += WEEK;
@@ -580,8 +575,8 @@ contract MetaBribe is IMetaBribe, Constants {
           rebase = 0;
         } else {
           rebase +=
-          (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
-          1000;
+            (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
+            1000;
         }
         week_cursor += WEEK;
       }

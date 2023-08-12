@@ -207,7 +207,17 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   function getMetaBribe(
     uint tokenId,
     uint ts
-  ) public view returns (address[] memory, uint[] memory, address[] memory, uint) {
+  )
+    public
+    view
+    returns (
+      address[] memory,
+      uint[] memory,
+      uint[] memory,
+      address[] memory,
+      uint
+    )
+  {
     MetaBribes storage mb = metaBribesPerEpoch[tokenId][ts];
     return (mb.bribedTokens, mb.amounts, mb.values, mb.gauges, mb.tokenId);
   }
@@ -272,8 +282,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       metaBribe.values[0] = value;
       metaBribe.gauges[0] = gauge;
       metaBribesPerEpoch[tokenId][adjustedTstamp] = metaBribe;
-    }
-    else {
+    } else {
       // 2nd+ bribe submission from this tokenId in this epoch
       metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.push(token);
       metaBribesPerEpoch[tokenId][adjustedTstamp].amounts.push(amount);
