@@ -96,7 +96,7 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
   bytes4 internal constant ERC721_METADATA_INTERFACE_ID = 0x5b5e139f;
 
   /// @dev Current count of token
-  uint internal tokenId;
+  uint public tokenId;
 
   /// @notice Contract constructor
   /// @param token_addr `STRAT` token address

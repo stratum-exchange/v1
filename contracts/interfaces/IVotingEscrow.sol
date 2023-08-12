@@ -9,6 +9,8 @@ interface IVotingEscrow {
     uint256 blk; // block
   }
 
+  function tokenId() external view returns (uint);
+
   function token() external view returns (address);
 
   function team() external returns (address);
