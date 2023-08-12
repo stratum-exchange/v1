@@ -99,7 +99,6 @@ contract Stratum is IStratum {
   }
 
   function claim(address account, uint amount) external returns (bool) {
-    require(amount <= remainingClaimCap, "claim cap");
     require(remainingClaimCap > 0, "minting exhausted");
     require(msg.sender == redemptionReceiver || msg.sender == merkleClaim);
     if (amount > remainingClaimCap) {
