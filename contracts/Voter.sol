@@ -467,6 +467,7 @@ contract Voter is IVoter, Constants {
     if (_ratio > 0) {
       index += _ratio;
     }
+    distribute(0, pools.length);
     emit NotifyReward(msg.sender, base, amount);
   }
 
@@ -575,7 +576,7 @@ contract Voter is IVoter, Constants {
   }
 
   function distro() external {
-    distribute(0, pools.length);
+    IMinter(minter).update_period();
   }
 
   function distribute() external {
