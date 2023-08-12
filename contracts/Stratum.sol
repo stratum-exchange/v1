@@ -8,6 +8,7 @@ contract Stratum is IStratum {
   string public constant symbol = "STRAT";
   uint8 public constant decimals = 18;
   uint public totalSupply = 0;
+  uint public remainingClaimCap = 6_250_000 * 1e18;
 
   mapping(address => uint) public balanceOf;
   mapping(address => mapping(address => uint)) public allowance;
@@ -98,7 +99,14 @@ contract Stratum is IStratum {
   }
 
   function claim(address account, uint amount) external returns (bool) {
+    require(amount <= remainingClaimCap, "claim cap");
+    require(remainingClaimCap > 0, "minting exhausted");
     require(msg.sender == redemptionReceiver || msg.sender == merkleClaim);
+    if (amount > remainingClaimCap) {
+      // handle possible rounding artifacts
+      amount = remainingClaimCap;
+    }
+    remainingClaimCap -= amount;
     _mint(account, amount);
     return true;
   }
