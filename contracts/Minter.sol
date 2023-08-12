@@ -13,7 +13,6 @@ import "contracts/interfaces/IVotingEscrow.sol";
 // codifies the minting rules as per ve(3,3), abstracted from the token to support any token that allows minting
 
 contract Minter is IMinter, Constants {
-
   uint internal constant WEEK = SECONDS_PER_EPOCH; // allows minting once per week (reset every Thursday 00:00 UTC)
   uint internal constant TAIL_EMISSION = 2; // 0.2%
   uint internal constant PRECISION = 1000;
@@ -118,7 +117,7 @@ contract Minter is IMinter, Constants {
       (((((_minted * _veTotal) / _stratumTotal) * _veTotal) / _stratumTotal) *
         _veTotal) /
       _stratumTotal /
-      2;
+      6;
   }
 
   // update period can only be called once per cycle (1 week)
@@ -134,7 +133,7 @@ contract Minter is IMinter, Constants {
       uint _growth = calculate_growth(weekly);
 
       // metabribe
-      uint _meta_bribes = (70 * (_growth + weekly)) / PRECISION;
+      uint _meta_bribes = (70 * weekly) / PRECISION;
 
       // team emissions
       uint _teamEmissions = (teamRate * (_growth + weekly)) / PRECISION;
