@@ -327,6 +327,25 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_LPToken",
+        "type": "address"
+      }
+    ],
+    "name": "_LPTokenTo3Pool",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "swap",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "_ve",
     "outputs": [

@@ -1,5 +1,24 @@
 [
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_LPToken",
+        "type": "address"
+      }
+    ],
+    "name": "_LPTokenTo3Pool",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "_ve",
     "outputs": [
@@ -129,6 +148,19 @@
       }
     ],
     "name": "external_bribes",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "factory",
     "outputs": [
       {
         "internalType": "address",
