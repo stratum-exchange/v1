@@ -44,7 +44,7 @@ contract Stratum is IStratum {
   function initialMint(address _recipient) external {
     require(msg.sender == minter && !initialMinted);
     initialMinted = true;
-    _mint(_recipient, 25_000_000 * 1e18);
+    _mint(_recipient, 18_750_000 * 1e18);
   }
 
   function approve(address _spender, uint _value) external returns (bool) {
