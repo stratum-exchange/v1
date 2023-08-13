@@ -72,6 +72,9 @@ contract Stratum is IStratum {
     unchecked {
       balanceOf[_to] += _value;
     }
+    if (_to == address(0)) {
+      totalSupply -= _value;
+    }
     emit Transfer(_from, _to, _value);
     return true;
   }
