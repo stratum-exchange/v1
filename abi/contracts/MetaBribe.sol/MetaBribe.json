@@ -15,11 +15,6 @@
         "internalType": "address",
         "name": "_wxBribeFactory",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_router",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -448,19 +443,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "router",
-    "outputs": [
-      {
-        "internalType": "contract IRouter",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -482,19 +464,6 @@
       }
     ],
     "name": "setGovernor",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_newRouter",
-        "type": "address"
-      }
-    ],
-    "name": "setRouter",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
