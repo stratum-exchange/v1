@@ -117,7 +117,7 @@ contract Minter is IMinter, Constants {
       (((((_minted * _veTotal) / _stratumTotal) * _veTotal) / _stratumTotal) *
         _veTotal) /
       _stratumTotal /
-      6;
+      4;
   }
 
   // update period can only be called once per cycle (1 week)
