@@ -9,7 +9,6 @@ import "contracts/interfaces/IVotingEscrow.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IWrappedExternalBribeFactory.sol";
 import "contracts/interfaces/IWrappedExternalBribe.sol";
-import "contracts/interfaces/IRouter.sol";
 
 /*
 
@@ -48,14 +47,8 @@ contract MetaBribe is IMetaBribe, Constants {
 
   IVoter public immutable voter;
   IWrappedExternalBribeFactory public immutable wxBribeFactory;
-  IRouter public router;
 
-  constructor(
-    address _voting_escrow,
-    address _voter,
-    address _wxBribeFactory,
-    address _router
-  ) {
+  constructor(address _voting_escrow, address _voter, address _wxBribeFactory) {
     uint _t = (block.timestamp / WEEK) * WEEK;
     start_time = _t;
     last_token_time = _t;
@@ -65,7 +58,6 @@ contract MetaBribe is IMetaBribe, Constants {
     voting_escrow = _voting_escrow;
     voter = IVoter(_voter);
     wxBribeFactory = IWrappedExternalBribeFactory(_wxBribeFactory);
-    router = IRouter(_router);
     depositor = msg.sender;
     governor = msg.sender;
     require(IERC20(_token).approve(_voting_escrow, type(uint).max));
@@ -75,12 +67,6 @@ contract MetaBribe is IMetaBribe, Constants {
     require(msg.sender == governor);
     require(_governor != address(0));
     governor = _governor;
-  }
-
-  function setRouter(address _newRouter) public {
-    require(msg.sender == governor);
-    require(_newRouter != address(0));
-    router = IRouter(_newRouter);
   }
 
   function addPartners(
