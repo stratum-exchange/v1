@@ -658,7 +658,12 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
     // initial_last_point is used for extrapolation to calculate block number
     // (approximately, for *At methods) and save them
     // as we cannot figure that out exactly from inside the contract
-    Point memory initial_last_point = last_point;
+    Point memory initial_last_point = Point({
+      bias: last_point.bias,
+      slope: last_point.slope,
+      ts: last_point.ts,
+      blk: last_point.blk
+    });
     uint block_slope = 0; // dblock/dt
     if (block.timestamp > last_point.ts) {
       block_slope =
@@ -1540,7 +1545,6 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
   /// @dev ve lending publicly available or restricted to team?
   bool public publicLending = false;
 
-
   /// @notice Lends the token to a borrower with least permissions and the ability
   ///         to actively pull it back later by transfer (lender has allowance that can't be revoked).
   ///         Keep in mind, that you have to set your address in the whitelist, if you want to be able
@@ -1581,7 +1585,7 @@ contract VotingEscrow is IERC721, IERC721Metadata, IVotes, Constants {
 
     // plausibility check if expiry date is in the past. Would otherwise be like transfer, because
     // restrictions wouldn't even become active.
-    require (_expiresAt > block.timestamp, "already expired");
+    require(_expiresAt > block.timestamp, "already expired");
 
     address owner = ownerOf(_tokenId);
 
