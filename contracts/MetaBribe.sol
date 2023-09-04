@@ -19,9 +19,18 @@ import "contracts/interfaces/IWrappedExternalBribe.sol";
 */
 
 contract MetaBribe is IMetaBribe, Constants {
+
+  struct VotesCheckpoint {
+    mapping(uint => uint) partnerTokenVotes;
+    uint totalPartnerVotes;
+    uint totalVotes;
+  }
+
   event CheckpointToken(uint time, uint tokens);
 
   event Claimed(uint tokenId, uint amount, uint claim_epoch, uint max_epoch);
+
+  event CoefficientsSet(uint _alpha, uint _beta);
 
   uint constant WEEK = SECONDS_PER_EPOCH;
 
@@ -44,11 +53,16 @@ contract MetaBribe is IMetaBribe, Constants {
 
   address[] public partners;
   mapping(address => uint[]) public partnerToTokenIds;
-  mapping(uint => mapping(uint => uint)) public partnerTokenVotesPerEpoch; // epoch => tokenId => votes
-  mapping(uint => uint) public totalPartnerVotesPerEpoch; // epoch => total partner votes
+
+  mapping(uint => VotesCheckpoint) public votesCheckpointPerEpoch;
 
   IVoter public immutable voter;
   IWrappedExternalBribeFactory public immutable wxBribeFactory;
+
+  // coefficients for the metabribe weights formula,
+  // see get_metabribe_weight() and https://stratum-exchange.gitbook.io/stratum-exchange/meta-bribes
+  uint public alpha = 2;
+  uint public beta = 1;
 
   constructor(address _voting_escrow, address _voter, address _wxBribeFactory) {
     uint _t = (block.timestamp / WEEK) * WEEK;
@@ -215,11 +229,11 @@ contract MetaBribe is IMetaBribe, Constants {
 
   function checkpoint_token() external {
     assert(msg.sender == depositor);
-    _snapshot_partner_votes();
+    _checkpoint_votes();
     _checkpoint_token();
   }
 
-  function _snapshot_partner_votes() internal {
+  function _checkpoint_votes() internal {
     uint past_epoch = timestamp() - WEEK;
     for (uint i = 0; i < partners.length; i++) {
       if (partners[i] == address(0)) {
@@ -231,8 +245,9 @@ contract MetaBribe is IMetaBribe, Constants {
         for (uint k = 0; k < voter.length(); k++) {
           used_votes += voter.votesByNFTAndPool(_tokenId, voter.poolByIndex(k));
         }
-        partnerTokenVotesPerEpoch[past_epoch][_tokenId] = used_votes;
-        totalPartnerVotesPerEpoch[past_epoch] += used_votes;
+        votesCheckpointPerEpoch[past_epoch].partnerTokenVotes[_tokenId] = used_votes;
+        votesCheckpointPerEpoch[past_epoch].totalPartnerVotes += used_votes;
+        votesCheckpointPerEpoch[past_epoch].totalVotes = voter.totalWeight();
       }
     }
   }
@@ -384,14 +399,19 @@ contract MetaBribe is IMetaBribe, Constants {
     uint _tokenId,
     uint week_cursor
   ) public view returns (uint) {
+    uint precision = 1e18;
     uint user_bribes_value = check_user_bribes_value(_tokenId, week_cursor);
     uint total_bribes_value = check_total_bribes_value(week_cursor);
-    if (user_bribes_value > 0 && total_bribes_value > 0) {
+    uint total_bribes_value_share = total_bribes_value > 0
+      ? (user_bribes_value * precision) / total_bribes_value
+      : 0;
+    uint votingPowerOfTokenId = ve_for_at(_tokenId, week_cursor);
+    uint partnerTokenVotes = votesCheckpointPerEpoch[week_cursor].partnerTokenVotes[_tokenId];
+    if (partnerTokenVotes > 0 && votingPowerOfTokenId > 0) {
       return
-        (2 * user_bribes_value * 1000) / total_bribes_value +
-        (totalPartnerVotesPerEpoch[week_cursor] > 0
-          ? partnerTokenVotesPerEpoch[week_cursor][_tokenId] / totalPartnerVotesPerEpoch[week_cursor]
-          : 0);
+        alpha * total_bribes_value_share +
+        (beta * total_bribes_value_share * votesCheckpointPerEpoch[week_cursor].totalVotes)
+          / (partnerTokenVotes * votingPowerOfTokenId);
     }
     return 0;
   }
@@ -475,8 +495,7 @@ contract MetaBribe is IMetaBribe, Constants {
           rebase = 0;
         } else {
           rebase +=
-            (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
-            1000;
+            (weight * 1e18 * tokens_per_week[week_cursor]) / (totalWeight * 1e18);
         }
 
         week_cursor += WEEK;
@@ -605,6 +624,13 @@ contract MetaBribe is IMetaBribe, Constants {
     }
 
     return true;
+  }
+
+  function setCoefficients(uint _alpha, uint _beta) external {
+    require(msg.sender == governor);
+    alpha = _alpha;
+    beta = _beta;
+    emit CoefficientsSet(alpha, beta);
   }
 
   // Once off event on contract initialize

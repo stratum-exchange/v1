@@ -46,4 +46,6 @@ interface IVoter {
   function notifyRewardAmount(uint amount) external;
 
   function distribute(address _gauge) external;
+
+  function totalWeight() external view returns (uint);
 }
