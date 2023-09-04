@@ -9,6 +9,8 @@ import "contracts/interfaces/IVotingEscrow.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IWrappedExternalBribeFactory.sol";
 import "contracts/interfaces/IWrappedExternalBribe.sol";
+import "contracts/interfaces/IPairFactory.sol";
+import "contracts/interfaces/IPair.sol";
 
 /*
 
@@ -64,7 +66,10 @@ contract MetaBribe is IMetaBribe, Constants {
   uint public alpha = 2;
   uint public beta = 1;
 
-  constructor(address _voting_escrow, address _voter, address _wxBribeFactory) {
+  address public currency; // currency for estimating the value of a bribe
+  address[] public transitCurrencies; // allowed intermediary tokens for the estimating the value of a bribe in 'currency'
+
+  constructor(address _voting_escrow, address _voter, address _wxBribeFactory, address _currency) {
     uint _t = (block.timestamp / WEEK) * WEEK;
     start_time = _t;
     last_token_time = _t;
@@ -76,6 +81,7 @@ contract MetaBribe is IMetaBribe, Constants {
     wxBribeFactory = IWrappedExternalBribeFactory(_wxBribeFactory);
     depositor = msg.sender;
     governor = msg.sender;
+    currency = _currency;
     require(IERC20(_token).approve(_voting_escrow, type(uint).max));
   }
 
@@ -638,5 +644,130 @@ contract MetaBribe is IMetaBribe, Constants {
     require(msg.sender == depositor);
     require(_depositor != address(0));
     depositor = _depositor;
+  }
+
+  function setCurrency(address _newCurrency, bool _pedantic) external {
+    require(msg.sender == governor);
+    require(_newCurrency != address(0));
+
+    if (_pedantic) {
+      IVoter _voter = IVoter(voter);
+      for (uint i = 0; i < _voter.length(); i++) {
+        address wxBribe = getWrappedExternalBribeByPool(i);
+        // otherwise we mix different value metrics if currency and _newCurrency
+        // are not both USD-pegged (which can't be checked here)
+        require(
+          wxBribe == address(0) || IWrappedExternalBribe(wxBribe).getTotalBribesValue(block.timestamp) == 0,
+          "can't mix"
+        );
+      }
+    }
+
+    currency = _newCurrency;
+  }
+
+  function setTransitCurrencies(address[] memory _transitCurrencies) external {
+    require(msg.sender == governor);
+    transitCurrencies = _transitCurrencies;
+  }
+
+  /////////////////////////////////
+  // price estimation functionality
+  /////////////////////////////////
+
+  /// Uses TWAP of the route with largest liquidity for tokenIn (direct or using one intermediary hop)
+  /// @return TWAP price of the route (see params), with the largest liquidity score or 0 in case of no valid route
+  function estimateValue(
+    address tokenIn,
+    uint amountIn,
+    address tokenOut
+  ) external view returns (uint) {
+    if (tokenIn == tokenOut || amountIn == 0) {
+      return amountIn;
+    }
+
+    uint bestAmountOut = 0;
+    uint bestLiquidity;
+    address pair;
+
+    // direct route
+    (pair, bestLiquidity) = getMostLiquidPair(tokenIn, tokenOut);
+    if (pair != address(0)) {
+      bestAmountOut = IPair(pair).current(tokenIn, amountIn);
+      bestLiquidity = bestLiquidity * bestLiquidity;
+    }
+
+    // routes with one hop via intermediate token
+    for (uint i = 0; i < transitCurrencies.length; i++) {
+
+      uint intermediaryAmount = 0;
+      (address pair0, uint liquidity0) = getMostLiquidPair(tokenIn, transitCurrencies[i]);
+      if (pair0 == address(0)) {
+        continue;
+      }
+      intermediaryAmount = IPair(pair0).current(tokenIn, amountIn);
+
+      (address pair1, uint liquidity1) = getMostLiquidPair(transitCurrencies[i], tokenOut);
+      if (pair1 == address(0)) {
+        continue;
+      }
+
+      if (liquidity0 * liquidity1 > bestLiquidity) {
+        bestLiquidity = liquidity0 * liquidity1;
+        bestAmountOut = IPair(pair1).current(tokenOut, intermediaryAmount);
+      }
+
+    }
+
+    return bestAmountOut;
+  }
+
+  function getLiquidity(address _pair, address _token) internal view returns (uint) {
+    (,, uint r0, uint r1,, address t0, address t1) = IPair(_pair).metadata();
+    if (t0 == _token) {
+      return r0;
+    }
+    if (t1 == _token) {
+      return r1;
+    }
+    revert("token not in pair");
+  }
+
+  /// gets most liquid pool (either stable or variable) depending on
+  /// liquidity for token0 or zero address if both empty
+  function getMostLiquidPair(address token0, address token1)
+   internal view returns (address bestPair, uint bestLiquidity)
+  {
+    bestPair = address(0);
+    bestLiquidity = 0;
+
+    address pair = getPairFor(token0, token1, true);
+    if (getPairFactory().isPair(pair)) {
+      bestLiquidity = getLiquidity(pair, token0);
+      if (bestLiquidity > 0) {
+        bestPair = pair;
+      }
+    }
+
+    pair = getPairFor(token0, token1, false);
+    if (getPairFactory().isPair(pair)) {
+      uint liquidity = getLiquidity(pair, token0);
+      if (liquidity > bestLiquidity) {
+        bestLiquidity = liquidity;
+        bestPair = pair;
+      }
+    }
+  }
+
+  function getPairFor(
+    address token0,
+    address token1,
+    bool stable
+  ) public view returns (address pair) {
+    pair = getPairFactory().getPair(token0, token1, stable);
+  }
+
+  function getPairFactory() public view returns (IPairFactory) {
+    return IPairFactory(voter.factory());
   }
 }

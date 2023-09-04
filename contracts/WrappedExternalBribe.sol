@@ -25,7 +25,6 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   address public immutable _ve;
   address public router;
   address public governor;
-  address public currency;
   IWrappedExternalBribeFactory public wxbFactory;
   ExternalBribe public underlying_bribe;
 
@@ -41,7 +40,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   address[] public rewards;
   mapping(address => bool) public isReward;
 
-  mapping(uint => mapping(uint => MetaBribes)) public metaBribesPerEpoch;
+  mapping(uint => mapping(uint => MetaBribes)) public metaBribesPerEpoch; // tokenId => epoch => MetaBribe
 
   // Make MetaBribe calculations more robust (immutable): Memorizing prevents changes in formula
   // weights, when updating MetaBribe partner/token whitelists with tokenIds that have already
@@ -76,12 +75,10 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     address _voter,
     address _old_bribe,
     address _router,
-    address _currency,
     address _governor
   ) {
     voter = _voter;
     router = _router;
-    currency = _currency;
     governor = _governor;
     _ve = IVoter(_voter)._ve();
     wxbFactory = IWrappedExternalBribeFactory(msg.sender);
@@ -115,20 +112,6 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     require(msg.sender == governor);
     require(_governor != address(0));
     governor = _governor;
-  }
-
-  function setCurrency(address _newCurrency) public {
-    require(msg.sender == governor);
-    require(_newCurrency != address(0));
-
-    // otherwise we mix different value metrics if currency and _newCurrency
-    // are not both USD-pegged (which can't be checked here)
-    require(
-      totalBribesValuePerEpoch[getEpochStart(block.timestamp)].totalValue == 0,
-      "can't mix"
-    );
-
-    currency = _newCurrency;
   }
 
   function _bribeStart(uint timestamp) internal pure returns (uint) {
@@ -275,22 +258,9 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       rewards.push(token);
     }
 
-    address pair = IRouter(router).pairFor(token, currency, true);
-    uint amountS;
-    uint amountV;
-    if (IRouter(router).isPair(pair)) {
-      amountS = IPair(pair).current(token, amount);
-    }
-    pair = IRouter(router).pairFor(token, currency, false);
-    if (IRouter(router).isPair(pair)) {
-      amountV = IPair(pair).current(token, amount);
-    }
-    uint value;
-    if (token == currency) {
-      value = amount;
-    } else {
-      value = amountS > amountV ? amountS : amountV;
-    }
+    IMetaBribe _metaBribe = IMetaBribe(wxbFactory.metaBribe());
+    uint value = _metaBribe.estimateValue(token, amount, _metaBribe.currency());
+
     bool isPartner = isPartnerToken(tokenId);
 
     if (metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.length == 0) {

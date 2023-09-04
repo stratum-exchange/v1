@@ -10,13 +10,11 @@ contract WrappedExternalBribeFactory {
   address public router;
   address public metaBribe;
   address public governor;
-  address public currency;
 
-  constructor(address _voter, address _router, address _currency) {
+  constructor(address _voter, address _router) {
     voter = _voter;
     router = _router;
     governor = msg.sender;
-    currency = _currency;
   }
 
   function setRouter(address _newRouter) public {
@@ -29,12 +27,6 @@ contract WrappedExternalBribeFactory {
     require(msg.sender == governor);
     require(_governor != address(0));
     governor = _governor;
-  }
-
-  function setCurrency(address _newCurrency) public {
-    require(msg.sender == governor);
-    require(_newCurrency != address(0));
-    currency = _newCurrency;
   }
 
   function setMetaBribeAddress(address _metaBribe) public {
@@ -53,7 +45,6 @@ contract WrappedExternalBribeFactory {
         voter,
         existing_bribe,
         router,
-        currency,
         governor
       )
     );

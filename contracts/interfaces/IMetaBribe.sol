@@ -9,4 +9,12 @@ interface IMetaBribe {
   function isPartner(address _partner) external view returns (bool);
 
   function isEligibleTokenId(uint _tokenId) external view returns (bool);
+
+  function currency() external returns(address);
+
+  function estimateValue(
+    address tokenIn,
+    uint amountIn,
+    address tokenOut
+  ) external view returns (uint);
 }
