@@ -35,6 +35,8 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   mapping(address => bool) public isReward;
 
   mapping(uint => mapping(uint => MetaBribes)) public metaBribesPerEpoch;
+  mapping(uint => uint) public totalBribesValuePerEpoch;
+
 
   /// @notice A checkpoint for marking balance
   struct RewardCheckpoint {
@@ -106,6 +108,11 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   function setCurrency(address _newCurrency) public {
     require(msg.sender == governor);
     require(_newCurrency != address(0));
+
+    // otherwise we mix different value metrics if currency and _newCurrency
+    // are not both USD-pegged (which can't be checked here)
+    require(totalBribesValuePerEpoch[getEpochStart(block.timestamp)] == 0, "can't mix");
+
     currency = _newCurrency;
   }
 
@@ -292,6 +299,8 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       metaBribesPerEpoch[tokenId][adjustedTstamp].gauges.push(gauge);
     }
 
+    totalBribesValuePerEpoch[adjustedTstamp] += value;
+
     emit NotifyRewardMetaBribe(
       msg.sender,
       token,
@@ -301,6 +310,11 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       gauge,
       tokenId
     );
+  }
+
+  /// @inheritdoc
+  function getTotalBribesValue(uint ts) external view returns (uint) {
+    return totalBribesValuePerEpoch[getEpochStart(ts)];
   }
 
   function swapOutRewardToken(

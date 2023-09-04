@@ -14,6 +14,7 @@ interface IWrappedExternalBribe {
 
   function rewardsListLength() external view returns (uint);
 
+  /// @param ts timestamp will be rounded down to epoch
   function getMetaBribe(
     uint tokenId,
     uint ts
@@ -27,4 +28,8 @@ interface IWrappedExternalBribe {
       address[] memory,
       uint
     );
+
+  /// @param ts timestamp will be rounded down to epoch
+  /// @return summed bribe values of the epoch
+  function getTotalBribesValue(uint ts) external view returns(uint);
 }

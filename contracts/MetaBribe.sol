@@ -310,19 +310,10 @@ contract MetaBribe is IMetaBribe, Constants {
   /// @notice sums up values of all bribes
   function check_total_bribes_value(uint _ts) public view returns (uint) {
     uint bribes_value = 0;
-    uint veNFTAmount = IVotingEscrow(voting_escrow).tokenId();
-    for (uint i = 0; i < veNFTAmount; i++) {
-      uint pools_len = voter.length();
-      for (uint j = 0; j < pools_len; j++) {
-        address _wxBribe = getWrappedExternalBribeByPool(j);
-        (, , uint[] memory values, , ) = IWrappedExternalBribe(_wxBribe)
-          .getMetaBribe(i, _ts);
-        for (uint k = 0; k < values.length; k++) {
-          if (values[k] > 0) {
-            bribes_value += values[k];
-          }
-        }
-      }
+    uint pools_len = voter.length();
+    for (uint i = 0; i < pools_len; i++) {
+      address _wxBribe = getWrappedExternalBribeByPool(i);
+      bribes_value += IWrappedExternalBribe(_wxBribe).getTotalBribesValue(_ts);
     }
     return bribes_value;
   }
