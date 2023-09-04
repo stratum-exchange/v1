@@ -384,14 +384,14 @@ contract MetaBribe is IMetaBribe, Constants {
     uint _tokenId,
     uint week_cursor
   ) public view returns (uint) {
-    uint total_bribes_value = check_total_bribes_value(week_cursor);
     uint user_bribes_value = check_user_bribes_value(_tokenId, week_cursor);
-    uint token_voting_power = ve_for_at(_tokenId, week_cursor);
-    uint total_voting_power = total_partner_voting_power(week_cursor);
-    if (user_bribes_value > 0) {
+    uint total_bribes_value = check_total_bribes_value(week_cursor);
+    if (user_bribes_value > 0 && total_bribes_value > 0) {
       return
         (2 * user_bribes_value * 1000) / total_bribes_value +
-        (token_voting_power * 1000) / total_voting_power;
+        (totalPartnerVotesPerEpoch[week_cursor] > 0
+          ? partnerTokenVotesPerEpoch[week_cursor][_tokenId] / totalPartnerVotesPerEpoch[week_cursor]
+          : 0);
     }
     return 0;
   }
