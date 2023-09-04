@@ -268,6 +268,26 @@ contract MetaBribe is IMetaBribe, Constants {
     return wxBribeFactory.oldBribeToNew(xBribe);
   }
 
+  function ve_for_at(
+    uint _tokenId,
+    uint _timestamp
+  ) public view returns (uint) {
+    address ve = voting_escrow;
+    uint max_user_epoch = IVotingEscrow(ve).user_point_epoch(_tokenId);
+    uint epoch = _find_timestamp_user_epoch(
+      ve,
+      _tokenId,
+      _timestamp,
+      max_user_epoch
+    );
+    IVotingEscrow.Point memory pt = IVotingEscrow(ve).user_point_history(
+      _tokenId,
+      epoch
+    );
+    int256 vp = int256(pt.bias - pt.slope * (int128(int256(_timestamp - pt.ts))));
+    return vp > 0 ? uint(vp) : 0;
+  }
+
   function _checkpoint_total_supply() internal {
     address ve = voting_escrow;
     uint t = time_cursor;
@@ -302,20 +322,12 @@ contract MetaBribe is IMetaBribe, Constants {
     uint tokenId,
     uint _ts
   ) public view returns (uint) {
-    if (!isPartner(IVotingEscrow(voting_escrow).ownerOf(tokenId))) {
-      return 0;
-    }
     uint bribes_value = 0;
     uint pools_len = voter.length();
     for (uint i = 0; i < pools_len; i++) {
       address _wxBribe = getWrappedExternalBribeByPool(i);
-      (, , uint[] memory values, , ) = IWrappedExternalBribe(_wxBribe)
-        .getMetaBribe(tokenId, _ts);
-
-      for (uint j = 0; j < values.length; j++) {
-        if (values[j] > 0) {
-          bribes_value += values[j];
-        }
+      if (_wxBribe != address(0)) {
+        bribes_value += IWrappedExternalBribe(_wxBribe).getPartnerBribesValue(_ts, tokenId);
       }
     }
     return bribes_value;
@@ -327,18 +339,20 @@ contract MetaBribe is IMetaBribe, Constants {
     uint pools_len = voter.length();
     for (uint i = 0; i < pools_len; i++) {
       address _wxBribe = getWrappedExternalBribeByPool(i);
-      bribes_value += IWrappedExternalBribe(_wxBribe).getTotalBribesValue(_ts);
+      if (_wxBribe != address(0)) {
+        bribes_value += IWrappedExternalBribe(_wxBribe).getTotalPartnersBribesValue(_ts);
+      }
     }
     return bribes_value;
   }
 
   /// @notice sum of voting power of all partner veSTRAT
-  function check_partner_votes() public view returns (uint) {
+  function total_partner_voting_power(uint _ts) public view returns (uint) {
     uint partnerBalance = 0;
     for (uint i = 0; i < partners.length; i++) {
       for (uint j = 0; j < partnerToTokenIds[partners[i]].length; j++) {
         uint tokenId = partnerToTokenIds[partners[i]][j];
-        uint balance = IVotingEscrow(voting_escrow).balanceOfNFT(tokenId);
+        uint balance = ve_for_at(tokenId, _ts);
         partnerBalance += balance;
       }
     }
@@ -347,45 +361,24 @@ contract MetaBribe is IMetaBribe, Constants {
 
   function get_metabribe_weight(
     uint _tokenId,
-    address _gauge,
     uint week_cursor
   ) public view returns (uint) {
-    uint user_bribes_value = check_user_bribes_value(_tokenId, week_cursor);
     uint total_bribes_value = check_total_bribes_value(week_cursor);
-
-    address pool = voter.poolForGauge(_gauge);
-    uint pool_votes = voter.weights(pool);
-    uint partner_votes = check_partner_votes();
-    address xBribe = voter.external_bribes(_gauge);
-    address wxBribe = wxBribeFactory.oldBribeToNew(xBribe);
-    if (wxBribe == address(0)) {
-      return 0;
+    uint user_bribes_value = check_user_bribes_value(_tokenId, week_cursor);
+    uint token_voting_power = ve_for_at(_tokenId, week_cursor);
+    uint total_voting_power = total_partner_voting_power(week_cursor);
+    if (user_bribes_value > 0) {
+      return
+        (2 * user_bribes_value * 1000) / total_bribes_value +
+        (token_voting_power * 1000) / total_voting_power;
     }
-    (, , , address[] memory _gauges, ) = IWrappedExternalBribe(wxBribe)
-      .getMetaBribe(_tokenId, week_cursor);
-    bool isDepositedByTokenId = false;
-    for (uint i = 0; i < _gauges.length; i++) {
-      if (_gauges[i] == _gauge) {
-        isDepositedByTokenId = true;
-      }
-    }
-    if (
-      user_bribes_value > 0 &&
-      total_bribes_value > 0 &&
-      partner_votes > 0 &&
-      isDepositedByTokenId == true
-    ) {
-      uint weight = ((2 * user_bribes_value * 1000) / total_bribes_value) +
-        ((pool_votes * 1000) / partner_votes);
-      return weight;
-    } else return 0;
+    return 0;
   }
 
   function get_metabribe_total_weight(
     uint week_cursor
   ) public view returns (uint) {
     uint totalWeight = 0;
-    uint pools_len = voter.length();
     for (uint partnerIdx = 0; partnerIdx < partners.length; partnerIdx++) {
       for (
         uint partnerTokenIdx = 0;
@@ -393,18 +386,7 @@ contract MetaBribe is IMetaBribe, Constants {
         partnerTokenIdx++
       ) {
         uint nftID = partnerToTokenIds[partners[partnerIdx]][partnerTokenIdx];
-        for (uint poolIdx = 0; poolIdx < pools_len; poolIdx++) {
-          address pool = voter.poolByIndex(poolIdx);
-          address gauge = voter.gauges(pool);
-          uint weightByTokenId = get_metabribe_weight(
-            nftID,
-            gauge,
-            week_cursor
-          );
-          if (weightByTokenId > 0) {
-            totalWeight += weightByTokenId;
-          }
-        }
+        totalWeight += get_metabribe_weight(nftID, week_cursor);
       }
     }
     return totalWeight;
@@ -413,9 +395,10 @@ contract MetaBribe is IMetaBribe, Constants {
   function _claim(
     uint _tokenId,
     address ve,
-    uint _last_token_time,
-    address _gauge
+    uint _last_token_time
   ) internal returns (uint) {
+    require(IVotingEscrow(voting_escrow).isApprovedOrOwner(msg.sender, _tokenId), "not approved");
+
     uint user_epoch = 0;
     uint rebase = 0;
 
@@ -464,7 +447,7 @@ contract MetaBribe is IMetaBribe, Constants {
         }
       } else {
         // metabribe logic
-        uint weight = get_metabribe_weight(_tokenId, _gauge, week_cursor);
+        uint weight = get_metabribe_weight(_tokenId, week_cursor);
         uint totalWeight = get_metabribe_total_weight(week_cursor);
 
         if (totalWeight == 0) {
@@ -491,8 +474,7 @@ contract MetaBribe is IMetaBribe, Constants {
   function _claimable(
     uint _tokenId,
     address ve,
-    uint _last_token_time,
-    address _gauge
+    uint _last_token_time
   ) internal view returns (uint) {
     uint user_epoch = 0;
     // uint to_distribute = 0;
@@ -543,7 +525,7 @@ contract MetaBribe is IMetaBribe, Constants {
         }
       } else {
         // metabribe logic
-        uint weight = get_metabribe_weight(_tokenId, _gauge, week_cursor);
+        uint weight = get_metabribe_weight(_tokenId, week_cursor);
         uint totalWeight = get_metabribe_total_weight(week_cursor);
 
         if (totalWeight == 0) {
@@ -560,20 +542,18 @@ contract MetaBribe is IMetaBribe, Constants {
   }
 
   function claimable(
-    uint _tokenId,
-    address _gauge
+    uint _tokenId
   ) external view returns (uint) {
     uint _last_token_time = (last_token_time / WEEK) * WEEK;
-    return _claimable(_tokenId, voting_escrow, _last_token_time, _gauge);
+    return _claimable(_tokenId, voting_escrow, _last_token_time);
   }
 
-  function claim(uint _tokenId, address _gauge) external returns (uint) {
-    require(voter.isGauge(_gauge) == true);
+  function claim(uint _tokenId) external returns (uint) {
     require(isPartner(msg.sender) == true, "not a partner");
     if (block.timestamp >= time_cursor) _checkpoint_total_supply();
     uint _last_token_time = last_token_time;
     _last_token_time = (_last_token_time / WEEK) * WEEK;
-    uint amount = _claim(_tokenId, voting_escrow, _last_token_time, _gauge);
+    uint amount = _claim(_tokenId, voting_escrow, _last_token_time);
     if (amount != 0) {
       IVotingEscrow(voting_escrow).deposit_for(_tokenId, amount);
       token_last_balance -= amount;
@@ -582,8 +562,7 @@ contract MetaBribe is IMetaBribe, Constants {
   }
 
   function claim_many(
-    uint[] memory _tokenIds,
-    address[] memory _gauges
+    uint[] memory _tokenIds
   ) external returns (bool) {
     if (block.timestamp >= time_cursor) _checkpoint_total_supply();
     uint _last_token_time = last_token_time;
@@ -593,9 +572,8 @@ contract MetaBribe is IMetaBribe, Constants {
 
     for (uint i = 0; i < _tokenIds.length; i++) {
       uint _tokenId = _tokenIds[i];
-      address _gauge = _gauges[i];
       if (_tokenId == 0) break;
-      uint amount = _claim(_tokenId, _voting_escrow, _last_token_time, _gauge);
+      uint amount = _claim(_tokenId, _voting_escrow, _last_token_time);
       if (amount != 0) {
         IVotingEscrow(_voting_escrow).deposit_for(_tokenId, amount);
         total += amount;
