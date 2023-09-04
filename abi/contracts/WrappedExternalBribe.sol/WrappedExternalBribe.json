@@ -18,7 +18,7 @@
       },
       {
         "internalType": "address",
-        "name": "_currency",
+        "name": "_governor",
         "type": "address"
       }
     ],
@@ -116,6 +116,12 @@
       },
       {
         "indexed": false,
+        "internalType": "bool",
+        "name": "partner",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "gauge",
         "type": "address"
@@ -146,19 +152,6 @@
   {
     "inputs": [],
     "name": "_ve",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "currency",
     "outputs": [
       {
         "internalType": "address",
@@ -243,10 +236,34 @@
         "type": "uint256[]"
       },
       {
+        "internalType": "bool[]",
+        "name": "",
+        "type": "bool[]"
+      },
+      {
         "internalType": "address[]",
         "name": "",
         "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "ts",
+        "type": "uint256"
       },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getPartnerBribesValue",
+    "outputs": [
       {
         "internalType": "uint256",
         "name": "",
@@ -312,6 +329,44 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "ts",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTotalBribesValue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "ts",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTotalPartnersBribesValue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "governor",
     "outputs": [
@@ -319,6 +374,25 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isPartnerToken",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -411,18 +485,18 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
-    "name": "metaBribesPerEpoch",
+    "name": "metaBribeEpoch",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "tokenId",
+        "name": "totalValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalValueFromPartners",
         "type": "uint256"
       }
     ],
@@ -525,19 +599,6 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_newCurrency",
-        "type": "address"
-      }
-    ],
-    "name": "setCurrency",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
         "name": "_governor",
         "type": "address"
       }
@@ -626,6 +687,19 @@
     "outputs": [
       {
         "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "wxbFactory",
+    "outputs": [
+      {
+        "internalType": "contract IWrappedExternalBribeFactory",
         "name": "",
         "type": "address"
       }

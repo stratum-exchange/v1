@@ -10,11 +10,6 @@
         "internalType": "address",
         "name": "_router",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_currency",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -41,19 +36,6 @@
   },
   {
     "inputs": [],
-    "name": "currency",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "governor",
     "outputs": [
       {
@@ -68,6 +50,19 @@
   {
     "inputs": [],
     "name": "last_bribe",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "metaBribe",
     "outputs": [
       {
         "internalType": "address",
@@ -114,11 +109,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_newCurrency",
+        "name": "_governor",
         "type": "address"
       }
     ],
-    "name": "setCurrency",
+    "name": "setGovernor",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -127,11 +122,11 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_governor",
+        "name": "_metaBribe",
         "type": "address"
       }
     ],
-    "name": "setGovernor",
+    "name": "setMetaBribeAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

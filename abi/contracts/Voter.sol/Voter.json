@@ -505,17 +505,17 @@
       },
       {
         "internalType": "address",
-        "name": "_usdc",
+        "name": "_token0",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_usdt",
+        "name": "_token1",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "_lusd",
+        "name": "_token2",
         "type": "address"
       },
       {

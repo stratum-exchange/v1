@@ -15,6 +15,11 @@
         "internalType": "address",
         "name": "_wxBribeFactory",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_currency",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -71,6 +76,25 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "_alpha",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "_beta",
+        "type": "uint256"
+      }
+    ],
+    "name": "CoefficientsSet",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "SECONDS_PER_EPOCH",
     "outputs": [
@@ -103,7 +127,20 @@
   },
   {
     "inputs": [],
-    "name": "check_partner_votes",
+    "name": "alpha",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "beta",
     "outputs": [
       {
         "internalType": "uint256",
@@ -177,11 +214,6 @@
         "internalType": "uint256",
         "name": "_tokenId",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_gauge",
-        "type": "address"
       }
     ],
     "name": "claim",
@@ -201,11 +233,6 @@
         "internalType": "uint256[]",
         "name": "_tokenIds",
         "type": "uint256[]"
-      },
-      {
-        "internalType": "address[]",
-        "name": "_gauges",
-        "type": "address[]"
       }
     ],
     "name": "claim_many",
@@ -225,11 +252,6 @@
         "internalType": "uint256",
         "name": "_tokenId",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_gauge",
-        "type": "address"
       }
     ],
     "name": "claimable",
@@ -245,11 +267,95 @@
   },
   {
     "inputs": [],
+    "name": "currency",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "depositor",
     "outputs": [
       {
         "internalType": "address",
         "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tokenIn",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountIn",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenOut",
+        "type": "address"
+      }
+    ],
+    "name": "estimateValue",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPairFactory",
+    "outputs": [
+      {
+        "internalType": "contract IPairFactory",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token0",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "token1",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "stable",
+        "type": "bool"
+      }
+    ],
+    "name": "getPairFor",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "pair",
         "type": "address"
       }
     ],
@@ -279,15 +385,25 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "week_cursor",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_ts",
         "type": "uint256"
       }
     ],
-    "name": "get_metabribe_total_weight",
+    "name": "get_metabribe_weight_info",
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "user_weight",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "total_weight",
         "type": "uint256"
       }
     ],
@@ -295,29 +411,13 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_tokenId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_gauge",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "week_cursor",
-        "type": "uint256"
-      }
-    ],
-    "name": "get_metabribe_weight",
+    "inputs": [],
+    "name": "get_partner_token_ids",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "uint256[]",
         "name": "",
-        "type": "uint256"
+        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",
@@ -331,6 +431,25 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isEligibleTokenId",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -412,6 +531,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "partnersLength",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -445,6 +577,42 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_alpha",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_beta",
+        "type": "uint256"
+      }
+    ],
+    "name": "setCoefficients",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_newCurrency",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "_pedantic",
+        "type": "bool"
+      }
+    ],
+    "name": "setCurrency",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_depositor",
         "type": "address"
@@ -464,6 +632,19 @@
       }
     ],
     "name": "setGovernor",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "_transitCurrencies",
+        "type": "address[]"
+      }
+    ],
+    "name": "setTransitCurrencies",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -575,6 +756,44 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "_ts",
+        "type": "uint256"
+      }
+    ],
+    "name": "total_partner_voting_power",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "transitCurrencies",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "",
         "type": "uint256"
       }
@@ -641,6 +860,30 @@
         "internalType": "contract IVoter",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "votesCheckpointPerEpoch",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "totalPartnerVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "totalVotes",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
