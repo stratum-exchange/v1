@@ -16,7 +16,6 @@ import "contracts/Constants.sol";
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with Voter.vote())
 contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
-
   struct MetaBribeInfo {
     address bribedToken;
     uint amount;
@@ -191,8 +190,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     _currTs = Math.max(_currTs, _bribeStart(_ts));
 
     // get epochs between current epoch and first checkpoint in same epoch as last claim
-    uint numEpochs = (_bribeStart(block.timestamp + DURATION) - _currTs) /
-      DURATION;
+    uint numEpochs = (_bribeStart(block.timestamp) - _currTs) / DURATION;
 
     if (numEpochs > 0) {
       for (uint256 i = 0; i < numEpochs; i++) {
@@ -286,13 +284,15 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
 
     bool isPartner = isPartnerToken(tokenId);
 
-    metaBribeEpoch[adjustedTstamp].bribes[tokenId].push(MetaBribeInfo({
-      bribedToken : token,
-      amount : amount,
-      value : value,
-      partner : isPartner,
-      gauge : gauge
-    }));
+    metaBribeEpoch[adjustedTstamp].bribes[tokenId].push(
+      MetaBribeInfo({
+        bribedToken: token,
+        amount: amount,
+        value: value,
+        partner: isPartner,
+        gauge: gauge
+      })
+    );
 
     metaBribeEpoch[adjustedTstamp].totalValue += value;
     if (isPartner) {
