@@ -258,12 +258,12 @@ contract InternalBribe is IBribe, Constants {
     if (numEpochs > 0) {
       for (uint256 i = 0; i < numEpochs; i++) {
         // get index of last checkpoint in this epoch
-        _index = getPriorBalanceIndex(tokenId, _currTs + DURATION);
+        _index = getPriorBalanceIndex(tokenId, _currTs + DURATION - 1);
         // get checkpoint in this epoch
         _ts = checkpoints[tokenId][_index].timestamp;
         _bal = checkpoints[tokenId][_index].balanceOf;
         // get supply of last checkpoint in this epoch
-        _supply = supplyCheckpoints[getPriorSupplyIndex(_currTs + DURATION)]
+        _supply = supplyCheckpoints[getPriorSupplyIndex(_currTs + DURATION - 1)]
           .supply;
         if (_supply > 0)
           // prevent div by 0

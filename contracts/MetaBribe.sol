@@ -243,29 +243,6 @@ contract MetaBribe is IMetaBribe, Constants {
     return _min;
   }
 
-  function ve_for_at(
-    uint _tokenId,
-    uint _timestamp
-  ) external view returns (uint) {
-    address ve = voting_escrow;
-    uint max_user_epoch = IVotingEscrow(ve).user_point_epoch(_tokenId);
-    uint epoch = _find_timestamp_user_epoch(
-      ve,
-      _tokenId,
-      _timestamp,
-      max_user_epoch
-    );
-    IVotingEscrow.Point memory pt = IVotingEscrow(ve).user_point_history(
-      _tokenId,
-      epoch
-    );
-    return
-      Math.max(
-        uint(int256(pt.bias - pt.slope * (int128(int256(_timestamp - pt.ts))))),
-        0
-      );
-  }
-
   function getWrappedExternalBribeByPool(
     uint _poolIndex
   ) public view returns (address) {
@@ -372,6 +349,9 @@ contract MetaBribe is IMetaBribe, Constants {
     uint partner_votes = check_partner_votes();
     address xBribe = voter.external_bribes(_gauge);
     address wxBribe = wxBribeFactory.oldBribeToNew(xBribe);
+    if (wxBribe == address(0)) {
+      return 0;
+    }
     (, , , address[] memory _gauges, ) = IWrappedExternalBribe(wxBribe)
       .getMetaBribe(_tokenId, week_cursor);
     bool isDepositedByTokenId = false;

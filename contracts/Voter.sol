@@ -390,8 +390,8 @@ contract Voter is IVoter, Constants {
   function killGauge(address _gauge) external {
     require(msg.sender == emergencyCouncil, "not emergency council");
     require(isAlive[_gauge], "gauge already dead");
+    _updateFor(_gauge);
     isAlive[_gauge] = false;
-    claimable[_gauge] = 0;
     emit GaugeKilled(_gauge);
   }
 

@@ -183,13 +183,13 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
         // get index of last checkpoint in this epoch
         _index = underlying_bribe.getPriorBalanceIndex(
           tokenId,
-          _currTs + DURATION
+          _currTs + DURATION - 1
         );
         // get checkpoint in this epoch
         (_ts, _bal) = underlying_bribe.checkpoints(tokenId, _index);
         // get supply of last checkpoint in this epoch
         (, _supply) = underlying_bribe.supplyCheckpoints(
-          underlying_bribe.getPriorSupplyIndex(_currTs + DURATION)
+          underlying_bribe.getPriorSupplyIndex(_currTs + DURATION - 1)
         );
         reward += (_bal * tokenRewardsPerEpoch[token][_currTs]) / _supply;
         _currTs += DURATION;
