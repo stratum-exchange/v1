@@ -42,7 +42,13 @@ contract WrappedExternalBribeFactory {
       "Wrapped bribe already created"
     );
     last_bribe = address(
-      new WrappedExternalBribe(voter, existing_bribe, router, currency)
+      new WrappedExternalBribe(
+        voter,
+        existing_bribe,
+        router,
+        currency,
+        governor
+      )
     );
     oldBribeToNew[existing_bribe] = last_bribe;
     return last_bribe;

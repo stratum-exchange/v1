@@ -63,11 +63,13 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     address _voter,
     address _old_bribe,
     address _router,
-    address _currency
+    address _currency,
+    address _governor
   ) {
     voter = _voter;
     router = _router;
     currency = _currency;
+    governor = _governor;
     _ve = IVoter(_voter)._ve();
     underlying_bribe = ExternalBribe(_old_bribe);
 
