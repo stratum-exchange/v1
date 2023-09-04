@@ -253,25 +253,23 @@ contract ExternalBribe is IBribe, Constants {
     // accounts for case where lastEarn is before first checkpoint
     _currTs = Math.max(_currTs, _bribeStart(_ts));
 
-    // get epochs between current epoch and first checkpoint in same epoch as last claim
-    uint numEpochs = (_bribeStart(block.timestamp + DURATION) - _currTs) /
-      DURATION;
-
-    if (numEpochs > 0) {
-      for (uint256 i = 0; i < numEpochs; i++) {
-        // get index of last checkpoint in this epoch
-        _index = getPriorBalanceIndex(tokenId, _currTs + DURATION - 1);
-        // get checkpoint in this epoch
-        _ts = checkpoints[tokenId][_index].timestamp;
-        _bal = checkpoints[tokenId][_index].balanceOf;
-        // get supply of last checkpoint in this epoch
-        _supply = supplyCheckpoints[getPriorSupplyIndex(_currTs + DURATION - 1)]
-          .supply;
-        if (_supply > 0)
-          // prevent div by 0
-          reward += (_bal * tokenRewardsPerEpoch[token][_currTs]) / _supply;
-        _currTs += DURATION;
+    for (uint k = 0; k < 50; k++) {
+      if (_currTs == _bribeStart(block.timestamp)) {
+        // if we reach the current epoch, exit
+        break;
       }
+      // get index of last checkpoint in this epoch
+      _index = getPriorBalanceIndex(tokenId, _currTs + DURATION - 1);
+      // get checkpoint in this epoch
+      _ts = checkpoints[tokenId][_index].timestamp;
+      _bal = checkpoints[tokenId][_index].balanceOf;
+      // get supply of last checkpoint in this epoch
+      _supply = supplyCheckpoints[getPriorSupplyIndex(_currTs + DURATION - 1)]
+        .supply;
+      if (_supply > 0)
+        // prevent div by 0
+        reward += (_bal * tokenRewardsPerEpoch[token][_currTs]) / _supply;
+      _currTs += DURATION;
     }
 
     return reward;
