@@ -23,8 +23,6 @@ import "contracts/interfaces/IPair.sol";
 contract MetaBribe is IMetaBribe, Constants {
 
   struct VotesCheckpoint {
-    mapping(uint => uint) partnerTokenVotes;
-    mapping(uint => uint) votesPerPartnerToken; // tokenId => total votes from tokenId
     mapping(uint => uint) votesPerPoolIndex; // poolIndex => total votes for pool across all users (not just partners)
     uint totalPartnerVotes;
     uint totalVotes;
@@ -253,7 +251,6 @@ contract MetaBribe is IMetaBribe, Constants {
         for (uint k = 0; k < voter.length(); k++) {
           used_votes += voter.votesByNFTAndPool(_tokenId, voter.poolByIndex(k));
         }
-        votesCheckpointPerEpoch[past_epoch].votesPerPartnerToken[_tokenId] = used_votes;
         votesCheckpointPerEpoch[past_epoch].totalPartnerVotes += used_votes;
         votesCheckpointPerEpoch[past_epoch].totalVotes = voter.totalWeight();
       }
@@ -533,44 +530,6 @@ contract MetaBribe is IMetaBribe, Constants {
     total_weight =
       (alpha * terms.first_term_nominator_all * 1e18)
       / terms.first_term_denominator + beta * terms.second_term_all;
-  }
-
-  function get_metabribe_weight(
-    uint _tokenId,
-    uint week_cursor
-  ) public view returns (uint) {
-    uint precision = 1e18;
-    uint user_bribes_value = check_user_bribes_value(_tokenId, week_cursor);
-    uint total_bribes_value = check_total_bribes_value(week_cursor);
-    uint total_bribes_value_share = total_bribes_value > 0
-      ? (user_bribes_value * precision) / total_bribes_value
-      : 0;
-    uint votingPowerOfTokenId = ve_for_at(_tokenId, week_cursor);
-    uint partnerTokenVotes = votesCheckpointPerEpoch[week_cursor].votesPerPartnerToken[_tokenId];
-    if (partnerTokenVotes > 0 && votingPowerOfTokenId > 0) {
-      return
-        alpha * total_bribes_value_share +
-        (beta * total_bribes_value_share * votesCheckpointPerEpoch[week_cursor].totalVotes)
-          / (partnerTokenVotes * votingPowerOfTokenId);
-    }
-    return 0;
-  }
-
-  function get_metabribe_total_weight(
-    uint week_cursor
-  ) public view returns (uint) {
-    uint totalWeight = 0;
-    for (uint partnerIdx = 0; partnerIdx < partners.length; partnerIdx++) {
-      for (
-        uint partnerTokenIdx = 0;
-        partnerTokenIdx < partnerToTokenIds[partners[partnerIdx]].length;
-        partnerTokenIdx++
-      ) {
-        uint nftID = partnerToTokenIds[partners[partnerIdx]][partnerTokenIdx];
-        totalWeight += get_metabribe_weight(nftID, week_cursor);
-      }
-    }
-    return totalWeight;
   }
 
   function _claim(
