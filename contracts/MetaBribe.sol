@@ -24,6 +24,8 @@ contract MetaBribe is IMetaBribe, Constants {
 
   struct VotesCheckpoint {
     mapping(uint => uint) partnerTokenVotes;
+    mapping(uint => uint) votesPerPartnerToken; // tokenId => total votes from tokenId
+    mapping(uint => uint) votesPerPoolIndex; // poolIndex => total votes for pool across all users (not just partners)
     uint totalPartnerVotes;
     uint totalVotes;
   }
@@ -251,10 +253,15 @@ contract MetaBribe is IMetaBribe, Constants {
         for (uint k = 0; k < voter.length(); k++) {
           used_votes += voter.votesByNFTAndPool(_tokenId, voter.poolByIndex(k));
         }
-        votesCheckpointPerEpoch[past_epoch].partnerTokenVotes[_tokenId] = used_votes;
+        votesCheckpointPerEpoch[past_epoch].votesPerPartnerToken[_tokenId] = used_votes;
         votesCheckpointPerEpoch[past_epoch].totalPartnerVotes += used_votes;
         votesCheckpointPerEpoch[past_epoch].totalVotes = voter.totalWeight();
       }
+    }
+
+    uint pools_len = voter.length();
+    for (uint i = 0; i < pools_len; i++) {
+      votesCheckpointPerEpoch[past_epoch].votesPerPoolIndex[i] = voter.weights(voter.poolByIndex(i));
     }
   }
 
@@ -401,6 +408,133 @@ contract MetaBribe is IMetaBribe, Constants {
     return partnerBalance;
   }
 
+  function get_partner_token_ids() public view returns (uint[] memory) {
+    uint n = 0;
+    for (uint i = 0; i < partners.length; i++) {
+      for (uint j = 0; j < partnerToTokenIds[partners[i]].length; j++) {
+        if (partnerToTokenIds[partners[i]][j] > 0) {
+          n++;
+        }
+      }
+    }
+    uint[] memory arr = new uint[](n);
+    uint k = 0;
+    for (uint i = 0; i < partners.length; i++) {
+      for (uint j = 0; j < partnerToTokenIds[partners[i]].length; j++) {
+        if (partnerToTokenIds[partners[i]][j] > 0) {
+          arr[k++] = partnerToTokenIds[partners[i]][j];
+        }
+      }
+    }
+    return arr;
+  }
+
+  // auxiliary struct for components of the weights formula
+  struct WeightsFormulaTerms {
+
+    // see https://stratum-exchange.gitbook.io/stratum-exchange/meta-bribes
+    // weight(_tokenId) = alpha*first_term + beta*second_term
+
+    // first_term =
+    //  (sum over all pools: bribes value of pool from _tokenId)
+    //  / (sum over all pools: total bribes value of pool)
+    uint first_term_nominator_tkn; // only for given partner _tokenId veNFT; not multiplied by 1e18
+    uint first_term_nominator_all; // summed up for all partner veNFTs; not multiplied by 1e18
+    uint first_term_denominator; // not multiplied by 1e18
+
+    // second_term =
+    //   sum over all pools of: [
+    //      (bribes value for that pool from _tokenId) * (total votes for that pool)
+    //      / ( (total bribes for that pool) * (votingPower of _tokenId) )
+    //   ]
+    uint second_term_tkn; // only for given partner _tokenId veNFT; multiplied by 1e18
+    uint second_term_all; // summed up for all partner veNFTs; multiplied by 1e18
+
+  }
+
+  /// @return user_weight only for _tokenId; multiplied by 1e18
+  /// @return total_weight as sum over all partner veNFTs; multiplied by 1e18
+  function get_metabribe_weight_info(
+    uint _tokenId,
+    uint _ts
+  ) public view returns (uint user_weight, uint total_weight) {
+
+    //
+    // see https://stratum-exchange.gitbook.io/stratum-exchange/meta-bribes
+    //
+    // user_weight = weight(_tokenId) = alpha*first_term + beta*second_term
+    //
+    // total_weight = sum of weight(partner veNFT) over all partner veNFTs
+    //
+    // first_term =
+    //  (sum over all pools: bribes value of pool from _tokenId)
+    //  / (sum over all pools: total bribes value of pool)
+    //
+    // second_term =
+    //   sum over all pools of: [
+    //      (bribes value for that pool from _tokenId) * (total votes for that pool)
+    //      / ( (total bribes for that pool) * (votingPower of _tokenId) )
+    //   ]
+    //
+
+    // in memory due to EVM stack size limits
+    WeightsFormulaTerms memory terms;
+
+    // memorize temporary lookup tables
+    uint[] memory partner_token_ids = get_partner_token_ids();
+    uint[] memory partner_voting_power = new uint[](partner_token_ids.length);
+    for (uint i = 0; i < partner_token_ids.length; i++) {
+      partner_voting_power[i] = ve_for_at(partner_token_ids[i], _ts);
+    }
+
+    // for each pool
+    for (uint i = 0; i < voter.length(); i++) {
+      address wxBribe = getWrappedExternalBribeByPool(i);
+      if (wxBribe == address(0)) {
+        continue; // pools without gauge can't have bribes
+      }
+
+      uint total_bribes_value_of_pool = IWrappedExternalBribe(wxBribe).getTotalBribesValue(_ts);
+      uint all_votes_for_pool = votesCheckpointPerEpoch[_ts].votesPerPoolIndex[i];
+
+      // for each partner
+      for (uint j = 0; j < partner_token_ids.length; j++) {
+
+        uint partner_bribes_value_of_pool = IWrappedExternalBribe(wxBribe).getPartnerBribesValue(_ts, partner_token_ids[j]);
+
+        // first term
+        terms.first_term_nominator_all += partner_bribes_value_of_pool;
+        if (partner_token_ids[j] == _tokenId) {
+          terms.first_term_nominator_tkn += partner_bribes_value_of_pool;
+        }
+        terms.first_term_denominator += total_bribes_value_of_pool;
+
+        // second term (only if bribes occurred, to prevent division by zero)
+        if (partner_bribes_value_of_pool > 0 && total_bribes_value_of_pool > 0 && partner_voting_power[j] > 0) {
+
+          uint second_term_summand =
+            (partner_bribes_value_of_pool * all_votes_for_pool * 1e18)
+            / (total_bribes_value_of_pool * partner_voting_power[j]);
+
+          terms.second_term_all += second_term_summand;
+          if (partner_token_ids[j] == _tokenId) {
+            terms.second_term_tkn += second_term_summand;
+          }
+
+        }
+
+      }
+
+    }
+
+    user_weight =
+      (alpha * terms.first_term_nominator_tkn * 1e18)
+      / terms.first_term_denominator + beta * terms.second_term_tkn;
+    total_weight =
+      (alpha * terms.first_term_nominator_all * 1e18)
+      / terms.first_term_denominator + beta * terms.second_term_all;
+  }
+
   function get_metabribe_weight(
     uint _tokenId,
     uint week_cursor
@@ -412,7 +546,7 @@ contract MetaBribe is IMetaBribe, Constants {
       ? (user_bribes_value * precision) / total_bribes_value
       : 0;
     uint votingPowerOfTokenId = ve_for_at(_tokenId, week_cursor);
-    uint partnerTokenVotes = votesCheckpointPerEpoch[week_cursor].partnerTokenVotes[_tokenId];
+    uint partnerTokenVotes = votesCheckpointPerEpoch[week_cursor].votesPerPartnerToken[_tokenId];
     if (partnerTokenVotes > 0 && votingPowerOfTokenId > 0) {
       return
         alpha * total_bribes_value_share +
@@ -494,14 +628,12 @@ contract MetaBribe is IMetaBribe, Constants {
         }
       } else {
         // metabribe logic
-        uint weight = get_metabribe_weight(_tokenId, week_cursor);
-        uint totalWeight = get_metabribe_total_weight(week_cursor);
+        (uint weight, uint totalWeight) = get_metabribe_weight_info(_tokenId, week_cursor);
 
         if (totalWeight == 0) {
           rebase = 0;
         } else {
-          rebase +=
-            (weight * 1e18 * tokens_per_week[week_cursor]) / (totalWeight * 1e18);
+          rebase += (weight * tokens_per_week[week_cursor]) / totalWeight;
         }
 
         week_cursor += WEEK;
@@ -571,15 +703,12 @@ contract MetaBribe is IMetaBribe, Constants {
         }
       } else {
         // metabribe logic
-        uint weight = get_metabribe_weight(_tokenId, week_cursor);
-        uint totalWeight = get_metabribe_total_weight(week_cursor);
+        (uint weight, uint totalWeight) = get_metabribe_weight_info(_tokenId, week_cursor);
 
         if (totalWeight == 0) {
           rebase = 0;
         } else {
-          rebase +=
-            (((weight * 1000) / totalWeight) * tokens_per_week[week_cursor]) /
-            1000;
+          rebase += (weight * tokens_per_week[week_cursor]) / totalWeight;
         }
         week_cursor += WEEK;
       }
