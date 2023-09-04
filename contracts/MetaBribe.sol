@@ -363,48 +363,6 @@ contract MetaBribe is IMetaBribe, Constants {
     _checkpoint_total_supply();
   }
 
-  /// @notice sums up values of bribes associated with partner tokenId in epoch _ts
-  function check_user_bribes_value(
-    uint tokenId,
-    uint _ts
-  ) public view returns (uint) {
-    uint bribes_value = 0;
-    uint pools_len = voter.length();
-    for (uint i = 0; i < pools_len; i++) {
-      address _wxBribe = getWrappedExternalBribeByPool(i);
-      if (_wxBribe != address(0)) {
-        bribes_value += IWrappedExternalBribe(_wxBribe).getPartnerBribesValue(_ts, tokenId);
-      }
-    }
-    return bribes_value;
-  }
-
-  /// @notice sums up values of all bribes
-  function check_total_bribes_value(uint _ts) public view returns (uint) {
-    uint bribes_value = 0;
-    uint pools_len = voter.length();
-    for (uint i = 0; i < pools_len; i++) {
-      address _wxBribe = getWrappedExternalBribeByPool(i);
-      if (_wxBribe != address(0)) {
-        bribes_value += IWrappedExternalBribe(_wxBribe).getTotalPartnersBribesValue(_ts);
-      }
-    }
-    return bribes_value;
-  }
-
-  /// @notice sum of voting power of all partner veSTRAT
-  function total_partner_voting_power(uint _ts) public view returns (uint) {
-    uint partnerBalance = 0;
-    for (uint i = 0; i < partners.length; i++) {
-      for (uint j = 0; j < partnerToTokenIds[partners[i]].length; j++) {
-        uint tokenId = partnerToTokenIds[partners[i]][j];
-        uint balance = ve_for_at(tokenId, _ts);
-        partnerBalance += balance;
-      }
-    }
-    return partnerBalance;
-  }
-
   function get_partner_token_ids() public view returns (uint[] memory) {
     uint n = 0;
     for (uint i = 0; i < partners.length; i++) {
