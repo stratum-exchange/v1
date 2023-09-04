@@ -32,4 +32,8 @@ interface IWrappedExternalBribe {
   /// @param ts timestamp will be rounded down to epoch
   /// @return summed bribe values of the epoch
   function getTotalBribesValue(uint ts) external view returns(uint);
+
+  /// @param ts timestamp will be rounded down to epoch
+  /// @return summed bribe values of the epoch, but only from MetaBribe partners
+  function getTotalPartnerBribesValue(uint ts) external view returns(uint);
 }

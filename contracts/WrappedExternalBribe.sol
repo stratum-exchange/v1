@@ -15,6 +15,12 @@ import "contracts/Constants.sol";
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with Voter.vote())
 contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
+
+  struct BribeValue {
+    uint totalValue;
+    uint totalValueFromPartners;
+  }
+
   address public immutable voter;
   address public immutable _ve;
   address public router;
@@ -35,7 +41,11 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   mapping(address => bool) public isReward;
 
   mapping(uint => mapping(uint => MetaBribes)) public metaBribesPerEpoch;
-  mapping(uint => uint) public totalBribesValuePerEpoch;
+
+  // Make MetaBribe calculations more robust (immutable): Memorizing prevents changes in formula
+  // weights, when updating MetaBribe partner/token whitelists with tokenIds that have already
+  // bribed in the past.
+  mapping(uint => BribeValue) public totalBribesValuePerEpoch;
 
 
   /// @notice A checkpoint for marking balance
@@ -111,7 +121,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
 
     // otherwise we mix different value metrics if currency and _newCurrency
     // are not both USD-pegged (which can't be checked here)
-    require(totalBribesValuePerEpoch[getEpochStart(block.timestamp)] == 0, "can't mix");
+    require(totalBribesValuePerEpoch[getEpochStart(block.timestamp)].totalValue == 0, "can't mix");
 
     currency = _newCurrency;
   }
@@ -299,7 +309,10 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       metaBribesPerEpoch[tokenId][adjustedTstamp].gauges.push(gauge);
     }
 
-    totalBribesValuePerEpoch[adjustedTstamp] += value;
+    totalBribesValuePerEpoch[adjustedTstamp].totalValue += value;
+    if (isPartnerToken(tokenId)) {
+      totalBribesValuePerEpoch[adjustedTstamp].totalValueFromPartners += value;
+    }
 
     emit NotifyRewardMetaBribe(
       msg.sender,
@@ -312,9 +325,14 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     );
   }
 
-  /// @inheritdoc
+  /// @inheritdoc IWrappedExternalBribe
   function getTotalBribesValue(uint ts) external view returns (uint) {
-    return totalBribesValuePerEpoch[getEpochStart(ts)];
+    return totalBribesValuePerEpoch[getEpochStart(ts)].totalValue;
+  }
+
+  /// @inheritdoc IWrappedExternalBribe
+  function getTotalPartnerBribesValue(uint ts) external view returns (uint) {
+    return totalBribesValuePerEpoch[getEpochStart(ts)].totalValueFromPartners;
   }
 
   function swapOutRewardToken(
@@ -352,5 +370,11 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value)
     );
     require(success && (data.length == 0 || abi.decode(data, (bool))));
+  }
+
+  /// @return true if tokenId is a whitelisted MetaBribe partner token
+  function isPartnerToken(uint tokenId) public view returns (bool) {
+    // TBD
+    return false;
   }
 }
