@@ -245,6 +245,7 @@ contract Voter is IVoter, Constants {
   ) external onlyNewEpoch(tokenId) {
     require(IVotingEscrow(_ve).isApprovedOrOwner(msg.sender, tokenId));
     require(_poolVote.length == _weights.length);
+    IMinter(minter).update_period();
     lastVoted[tokenId] = block.timestamp;
     _vote(tokenId, _poolVote, _weights);
   }
