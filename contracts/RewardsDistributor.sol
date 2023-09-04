@@ -155,11 +155,8 @@ contract RewardsDistributor is IRewardsDistributor, Constants {
       _tokenId,
       epoch
     );
-    return
-      Math.max(
-        uint(int256(pt.bias - pt.slope * (int128(int256(_timestamp - pt.ts))))),
-        0
-      );
+    int256 vp = int256(pt.bias - pt.slope * (int128(int256(_timestamp - pt.ts))));
+    return vp > 0 ? uint(vp) : 0;
   }
 
   function _checkpoint_total_supply() internal {
@@ -178,7 +175,9 @@ contract RewardsDistributor is IRewardsDistributor, Constants {
         if (t > pt.ts) {
           dt = int128(int256(t - pt.ts));
         }
-        ve_supply[t] = Math.max(uint(int256(pt.bias - pt.slope * dt)), 0);
+        ve_supply[t] = pt.bias > pt.slope * dt
+          ? uint(int256(pt.bias - pt.slope * dt))
+          : 0;
       }
       t += WEEK;
     }

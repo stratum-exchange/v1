@@ -284,7 +284,9 @@ contract MetaBribe is IMetaBribe, Constants {
         if (t > pt.ts) {
           dt = int128(int256(t - pt.ts));
         }
-        ve_supply[t] = Math.max(uint(int256(pt.bias - pt.slope * dt)), 0);
+        ve_supply[t] = pt.bias > pt.slope * dt
+          ? uint(int256(pt.bias - pt.slope * dt))
+          : 0;
       }
       t += WEEK;
     }
