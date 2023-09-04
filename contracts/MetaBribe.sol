@@ -44,6 +44,8 @@ contract MetaBribe is IMetaBribe, Constants {
 
   address[] public partners;
   mapping(address => uint[]) public partnerToTokenIds;
+  mapping(uint => mapping(uint => uint)) public partnerTokenVotesPerEpoch; // epoch => tokenId => votes
+  mapping(uint => uint) public totalPartnerVotesPerEpoch; // epoch => total partner votes
 
   IVoter public immutable voter;
   IWrappedExternalBribeFactory public immutable wxBribeFactory;
@@ -169,7 +171,7 @@ contract MetaBribe is IMetaBribe, Constants {
     return false;
   }
 
-  function timestamp() external view returns (uint) {
+  function timestamp() public view returns (uint) {
     return (block.timestamp / WEEK) * WEEK;
   }
 
@@ -213,7 +215,26 @@ contract MetaBribe is IMetaBribe, Constants {
 
   function checkpoint_token() external {
     assert(msg.sender == depositor);
+    _snapshot_partner_votes();
     _checkpoint_token();
+  }
+
+  function _snapshot_partner_votes() internal {
+    uint past_epoch = timestamp() - WEEK;
+    for (uint i = 0; i < partners.length; i++) {
+      if (partners[i] == address(0)) {
+        continue;
+      }
+      for (uint j = 0; j < partnerToTokenIds[partners[i]].length; j++) {
+        uint _tokenId = partnerToTokenIds[partners[i]][j];
+        uint used_votes = 0;
+        for (uint k = 0; k < voter.length(); k++) {
+          used_votes += voter.votesByNFTAndPool(_tokenId, voter.poolByIndex(k));
+        }
+        partnerTokenVotesPerEpoch[past_epoch][_tokenId] = used_votes;
+        totalPartnerVotesPerEpoch[past_epoch] += used_votes;
+      }
+    }
   }
 
   function _find_timestamp_epoch(
