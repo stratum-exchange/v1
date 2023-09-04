@@ -7,4 +7,6 @@ interface IMetaBribe {
   function checkpoint_total_supply() external;
 
   function isPartner(address _partner) external view returns (bool);
+
+  function isEligibleTokenId(uint _tokenId) external view returns (bool);
 }

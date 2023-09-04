@@ -10,12 +10,12 @@ import "contracts/interfaces/IRouter.sol";
 import "contracts/interfaces/IVoter.sol";
 import "contracts/interfaces/IVotingEscrow.sol";
 import "contracts/interfaces/IWrappedExternalBribe.sol";
+import "contracts/interfaces/IWrappedExternalBribeFactory.sol";
 import "contracts/interfaces/IMetaBribe.sol";
 import "contracts/Constants.sol";
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with Voter.vote())
 contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
-
   struct BribeValue {
     uint totalValue;
     uint totalValueFromPartners;
@@ -26,6 +26,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   address public router;
   address public governor;
   address public currency;
+  IWrappedExternalBribeFactory public wxbFactory;
   ExternalBribe public underlying_bribe;
 
   uint internal constant DURATION = SECONDS_PER_EPOCH; // rewards are released over the voting period
@@ -46,7 +47,6 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   // weights, when updating MetaBribe partner/token whitelists with tokenIds that have already
   // bribed in the past.
   mapping(uint => BribeValue) public totalBribesValuePerEpoch;
-
 
   /// @notice A checkpoint for marking balance
   struct RewardCheckpoint {
@@ -83,6 +83,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     currency = _currency;
     governor = _governor;
     _ve = IVoter(_voter)._ve();
+    wxbFactory = IWrappedExternalBribeFactory(msg.sender);
     underlying_bribe = ExternalBribe(_old_bribe);
 
     for (uint i; i < underlying_bribe.rewardsListLength(); i++) {
@@ -121,7 +122,10 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
 
     // otherwise we mix different value metrics if currency and _newCurrency
     // are not both USD-pegged (which can't be checked here)
-    require(totalBribesValuePerEpoch[getEpochStart(block.timestamp)].totalValue == 0, "can't mix");
+    require(
+      totalBribesValuePerEpoch[getEpochStart(block.timestamp)].totalValue == 0,
+      "can't mix"
+    );
 
     currency = _newCurrency;
   }
@@ -374,7 +378,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
 
   /// @return true if tokenId is a whitelisted MetaBribe partner token
   function isPartnerToken(uint tokenId) public view returns (bool) {
-    // TBD
-    return false;
+    address metaBribe = wxbFactory.metaBribe();
+    return IMetaBribe(metaBribe).isEligibleTokenId(tokenId);
   }
 }

@@ -157,6 +157,18 @@ contract MetaBribe is IMetaBribe, Constants {
     return false;
   }
 
+  function isEligibleTokenId(uint _tokenId) public view returns (bool) {
+    for (uint i = 0; i < partners.length; i++) {
+      uint[] memory tokenIds = partnerToTokenIds[partners[i]];
+      for (uint j = 0; j < tokenIds.length; j++) {
+        if (tokenIds[j] == _tokenId) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   function timestamp() external view returns (uint) {
     return (block.timestamp / WEEK) * WEEK;
   }

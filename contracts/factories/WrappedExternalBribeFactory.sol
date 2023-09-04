@@ -8,6 +8,7 @@ contract WrappedExternalBribeFactory {
   mapping(address => address) public oldBribeToNew;
   address public last_bribe;
   address public router;
+  address public metaBribe;
   address public governor;
   address public currency;
 
@@ -34,6 +35,12 @@ contract WrappedExternalBribeFactory {
     require(msg.sender == governor);
     require(_newCurrency != address(0));
     currency = _newCurrency;
+  }
+
+  function setMetaBribeAddress(address _metaBribe) public {
+    require(msg.sender == governor);
+    require(_metaBribe != address(0));
+    metaBribe = _metaBribe;
   }
 
   function createBribe(address existing_bribe) external returns (address) {
