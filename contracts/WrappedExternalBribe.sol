@@ -66,6 +66,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     uint epoch,
     uint amount,
     uint value,
+    bool partner,
     address gauge,
     uint tokenId
   );
@@ -290,6 +291,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     } else {
       value = amountS > amountV ? amountS : amountV;
     }
+    bool isPartner = isPartnerToken(tokenId);
 
     if (metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.length == 0) {
       // 1st bribe submission from this tokenId in this epoch
@@ -297,6 +299,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
         new address[](1),
         new uint[](1),
         new uint[](1),
+        new bool[](1),
         new address[](1),
         tokenId
       );
@@ -304,6 +307,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       metaBribe.amounts[0] = amount;
       metaBribe.values[0] = value;
       metaBribe.gauges[0] = gauge;
+      metaBribe.partner[0] = isPartner;
       metaBribesPerEpoch[tokenId][adjustedTstamp] = metaBribe;
     } else {
       // 2nd+ bribe submission from this tokenId in this epoch
@@ -311,10 +315,11 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       metaBribesPerEpoch[tokenId][adjustedTstamp].amounts.push(amount);
       metaBribesPerEpoch[tokenId][adjustedTstamp].values.push(value);
       metaBribesPerEpoch[tokenId][adjustedTstamp].gauges.push(gauge);
+      metaBribesPerEpoch[tokenId][adjustedTstamp].partner.push(isPartner);
     }
 
     totalBribesValuePerEpoch[adjustedTstamp].totalValue += value;
-    if (isPartnerToken(tokenId)) {
+    if (isPartner) {
       totalBribesValuePerEpoch[adjustedTstamp].totalValueFromPartners += value;
     }
 
@@ -324,6 +329,7 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
       adjustedTstamp,
       amount,
       value,
+      isPartner,
       gauge,
       tokenId
     );
@@ -335,8 +341,21 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   }
 
   /// @inheritdoc IWrappedExternalBribe
-  function getTotalPartnerBribesValue(uint ts) external view returns (uint) {
+  function getTotalPartnersBribesValue(uint ts) external view returns (uint) {
     return totalBribesValuePerEpoch[getEpochStart(ts)].totalValueFromPartners;
+  }
+
+  /// @inheritdoc IWrappedExternalBribe
+  function getPartnerBribesValue(uint ts, uint tokenId) external view returns (uint) {
+    ts = getEpochStart(ts);
+    uint sum = 0;
+    MetaBribes storage mb = metaBribesPerEpoch[tokenId][ts];
+    for (uint i = 0; i < mb.values.length; i++) {
+      if (mb.partner[i]) {
+        sum += mb.values[i];
+      }
+    }
+    return sum;
   }
 
   function swapOutRewardToken(

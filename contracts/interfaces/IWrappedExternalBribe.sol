@@ -6,6 +6,7 @@ interface IWrappedExternalBribe {
     address[] bribedTokens;
     uint[] amounts;
     uint[] values;
+    bool[] partner;
     address[] gauges;
     uint tokenId;
   }
@@ -35,5 +36,10 @@ interface IWrappedExternalBribe {
 
   /// @param ts timestamp will be rounded down to epoch
   /// @return summed bribe values of the epoch, but only from MetaBribe partners
-  function getTotalPartnerBribesValue(uint ts) external view returns(uint);
+  function getTotalPartnersBribesValue(uint ts) external view returns(uint);
+
+  /// @param ts timestamp will be rounded down to epoch
+  /// @return summed bribe values of the epoch from given tokenId, only if it was
+  ///         a partner tokenId a time of bribe emission
+  function getPartnerBribesValue(uint ts, uint tokenId) external view returns(uint);
 }
