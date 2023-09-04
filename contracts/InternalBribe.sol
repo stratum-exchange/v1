@@ -253,7 +253,8 @@ contract InternalBribe is IBribe, Constants {
     _currTs = Math.max(_currTs, _bribeStart(_ts));
 
     // get epochs between current epoch and first checkpoint in same epoch as last claim
-    uint numEpochs = (_bribeStart(block.timestamp) - _currTs) / DURATION;
+    uint numEpochs = (_bribeStart(block.timestamp + DURATION) - _currTs) /
+      DURATION;
 
     if (numEpochs > 0) {
       for (uint256 i = 0; i < numEpochs; i++) {
