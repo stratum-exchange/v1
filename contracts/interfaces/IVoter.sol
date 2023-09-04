@@ -6,6 +6,8 @@ interface IVoter {
 
   function factory() external view returns (address);
 
+  function minter() external view returns (address);
+
   function length() external view returns (uint);
 
   function gauges(address pool) external view returns (address);
