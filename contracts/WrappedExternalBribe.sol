@@ -16,9 +16,19 @@ import "contracts/Constants.sol";
 
 // Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with Voter.vote())
 contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
-  struct BribeValue {
+
+  struct MetaBribeInfo {
+    address bribedToken;
+    uint amount;
+    uint value;
+    bool partner;
+    address gauge;
+  }
+
+  struct MetaBribeEpoch {
     uint totalValue;
     uint totalValueFromPartners;
+    mapping(uint => MetaBribeInfo[]) bribes; // tokenId => MetaBribeInfo[]
   }
 
   address public immutable voter;
@@ -40,12 +50,10 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
   address[] public rewards;
   mapping(address => bool) public isReward;
 
-  mapping(uint => mapping(uint => MetaBribes)) public metaBribesPerEpoch; // tokenId => epoch => MetaBribe
-
-  // Make MetaBribe calculations more robust (immutable): Memorizing prevents changes in formula
+  // Make sure MetaBribe weights are final at the end of epoch: Memorizing prevents changes in formula
   // weights, when updating MetaBribe partner/token whitelists with tokenIds that have already
   // bribed in the past.
-  mapping(uint => BribeValue) public totalBribesValuePerEpoch;
+  mapping(uint => MetaBribeEpoch) public metaBribeEpoch; // epoch => MetaBribeEpoch
 
   /// @notice A checkpoint for marking balance
   struct RewardCheckpoint {
@@ -211,22 +219,36 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
     return tokenRewardsPerEpoch[token][adjustedTstamp];
   }
 
+  // only for tests, debugging and insights, not used in contracts anymore
   function getMetaBribe(
     uint tokenId,
     uint ts
   )
-    public
+    external
     view
     returns (
       address[] memory,
       uint[] memory,
       uint[] memory,
-      address[] memory,
-      uint
+      bool[] memory,
+      address[] memory
     )
   {
-    MetaBribes storage mb = metaBribesPerEpoch[tokenId][ts];
-    return (mb.bribedTokens, mb.amounts, mb.values, mb.gauges, mb.tokenId);
+    MetaBribeInfo[] storage mb = metaBribeEpoch[ts].bribes[tokenId];
+    uint n = mb.length;
+    address[] memory bribedTokens = new address[](n);
+    uint[] memory amounts = new uint[](n);
+    uint[] memory values = new uint[](n);
+    bool[] memory partner = new bool[](n);
+    address[] memory gauges = new address[](n);
+    for (uint i = 0; i < n; i++) {
+      bribedTokens[i] = mb[i].bribedToken;
+      amounts[i] = mb[i].amount;
+      values[i] = mb[i].value;
+      partner[i] = mb[i].partner;
+      gauges[i] = mb[i].gauge;
+    }
+    return (bribedTokens, amounts, values, partner, gauges);
   }
 
   // emits a bribe by a user
@@ -263,34 +285,17 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
 
     bool isPartner = isPartnerToken(tokenId);
 
-    if (metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.length == 0) {
-      // 1st bribe submission from this tokenId in this epoch
-      MetaBribes memory metaBribe = MetaBribes(
-        new address[](1),
-        new uint[](1),
-        new uint[](1),
-        new bool[](1),
-        new address[](1),
-        tokenId
-      );
-      metaBribe.bribedTokens[0] = token;
-      metaBribe.amounts[0] = amount;
-      metaBribe.values[0] = value;
-      metaBribe.gauges[0] = gauge;
-      metaBribe.partner[0] = isPartner;
-      metaBribesPerEpoch[tokenId][adjustedTstamp] = metaBribe;
-    } else {
-      // 2nd+ bribe submission from this tokenId in this epoch
-      metaBribesPerEpoch[tokenId][adjustedTstamp].bribedTokens.push(token);
-      metaBribesPerEpoch[tokenId][adjustedTstamp].amounts.push(amount);
-      metaBribesPerEpoch[tokenId][adjustedTstamp].values.push(value);
-      metaBribesPerEpoch[tokenId][adjustedTstamp].gauges.push(gauge);
-      metaBribesPerEpoch[tokenId][adjustedTstamp].partner.push(isPartner);
-    }
+    metaBribeEpoch[adjustedTstamp].bribes[tokenId].push(MetaBribeInfo({
+      bribedToken : token,
+      amount : amount,
+      value : value,
+      partner : isPartner,
+      gauge : gauge
+    }));
 
-    totalBribesValuePerEpoch[adjustedTstamp].totalValue += value;
+    metaBribeEpoch[adjustedTstamp].totalValue += value;
     if (isPartner) {
-      totalBribesValuePerEpoch[adjustedTstamp].totalValueFromPartners += value;
+      metaBribeEpoch[adjustedTstamp].totalValueFromPartners += value;
     }
 
     emit NotifyRewardMetaBribe(
@@ -307,22 +312,22 @@ contract WrappedExternalBribe is IWrappedExternalBribe, Constants {
 
   /// @inheritdoc IWrappedExternalBribe
   function getTotalBribesValue(uint ts) external view returns (uint) {
-    return totalBribesValuePerEpoch[getEpochStart(ts)].totalValue;
+    return metaBribeEpoch[getEpochStart(ts)].totalValue;
   }
 
   /// @inheritdoc IWrappedExternalBribe
   function getTotalPartnersBribesValue(uint ts) external view returns (uint) {
-    return totalBribesValuePerEpoch[getEpochStart(ts)].totalValueFromPartners;
+    return metaBribeEpoch[getEpochStart(ts)].totalValueFromPartners;
   }
 
   /// @inheritdoc IWrappedExternalBribe
   function getPartnerBribesValue(uint ts, uint tokenId) external view returns (uint) {
     ts = getEpochStart(ts);
     uint sum = 0;
-    MetaBribes storage mb = metaBribesPerEpoch[tokenId][ts];
-    for (uint i = 0; i < mb.values.length; i++) {
-      if (mb.partner[i]) {
-        sum += mb.values[i];
+    MetaBribeInfo[] storage mb = metaBribeEpoch[ts].bribes[tokenId];
+    for (uint i = 0; i < mb.length; i++) {
+      if (mb[i].partner) {
+        sum += mb[i].value;
       }
     }
     return sum;
