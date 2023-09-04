@@ -144,6 +144,10 @@ contract MetaBribe is IMetaBribe, Constants {
     revert("not found");
   }
 
+  function partnersLength() external view returns (uint) {
+    return partners.length;
+  }
+
   function isPartner(address _partner) public view returns (bool) {
     for (uint i = 0; i < partners.length; i++) {
       if (partners[i] == _partner) {
