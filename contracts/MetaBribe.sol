@@ -482,12 +482,18 @@ contract MetaBribe is IMetaBribe, Constants {
 
     }
 
-    user_weight =
-      (alpha * terms.first_term_nominator_tkn * 1e18)
-      / terms.first_term_denominator + beta * terms.second_term_tkn;
-    total_weight =
-      (alpha * terms.first_term_nominator_all * 1e18)
-      / terms.first_term_denominator + beta * terms.second_term_all;
+    if (terms.first_term_denominator > 0) {
+      user_weight =
+        (alpha * terms.first_term_nominator_tkn * 1e18)
+        / terms.first_term_denominator + beta * terms.second_term_tkn;
+      total_weight =
+        (alpha * terms.first_term_nominator_all * 1e18)
+        / terms.first_term_denominator + beta * terms.second_term_all;
+    }
+    else {
+      user_weight = 0;
+      total_weight = 0;
+    }
   }
 
   function _claim(
