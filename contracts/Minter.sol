@@ -16,6 +16,7 @@ contract Minter is IMinter, Constants {
   uint internal constant WEEK = SECONDS_PER_EPOCH; // allows minting once per week (reset every Thursday 00:00 UTC)
   uint internal constant TAIL_EMISSION = 2; // 0.2%
   uint internal constant PRECISION = 1000;
+  bool public isFirstMint;
   uint internal emission;
   uint internal numEpoch;
   IStratum public immutable _stratum;
@@ -23,7 +24,7 @@ contract Minter is IMinter, Constants {
   IVotingEscrow public immutable _ve;
   IRewardsDistributor public immutable _rewards_distributor;
   IMetaBribe public immutable _meta_bribe;
-  uint public weekly = 750_000 * 1e18; // represents a starting weekly emission of 750k STRAT (STRAT has 18 decimals)
+  uint public weekly = 500_000 * 1e18; // represents a starting weekly emission of 750k STRAT (STRAT has 18 decimals)
   uint public active_period;
   uint internal constant LOCK = SECONDS_PER_EPOCH * 52 * 1;
 
@@ -56,6 +57,7 @@ contract Minter is IMinter, Constants {
     _rewards_distributor = IRewardsDistributor(__rewards_distributor);
     _meta_bribe = IMetaBribe(__meta_bribe);
     active_period = ((block.timestamp + (2 * WEEK)) / WEEK) * WEEK;
+    isFirstMint = true;
   }
 
   function initialize(
@@ -117,7 +119,7 @@ contract Minter is IMinter, Constants {
       (((((_minted * _veTotal) / _stratumTotal) * _veTotal) / _stratumTotal) *
         _veTotal) /
       _stratumTotal /
-      4;
+      3;
   }
 
   // update period can only be called once per cycle (1 week)
@@ -127,7 +129,12 @@ contract Minter is IMinter, Constants {
       // only trigger if new week
       _period = (block.timestamp / WEEK) * WEEK;
       active_period = _period;
-      weekly = weekly_emission();
+
+      if (!isFirstMint) {
+        weekly = weekly_emission();
+      } else {
+        isFirstMint = false;
+      }
 
       // rebase
       uint _growth = calculate_growth(weekly);
@@ -136,9 +143,12 @@ contract Minter is IMinter, Constants {
       uint _meta_bribes = (70 * weekly) / PRECISION;
 
       // team emissions
-      uint _teamEmissions = (teamRate * (_growth + weekly)) / PRECISION;
+      uint _teamEmissions = (teamRate * weekly) / PRECISION;
 
-      uint _required = _growth + _meta_bribes + weekly + _teamEmissions;
+      uint _required = weekly;
+
+      uint _gauges = weekly - _growth - _meta_bribes - _teamEmissions;
+
       uint _balanceOf = _stratum.balanceOf(address(this));
       if (_balanceOf < _required) {
         _stratum.mint(address(this), _required - _balanceOf);
@@ -160,8 +170,8 @@ contract Minter is IMinter, Constants {
       _rewards_distributor.checkpoint_token(); // checkpoint token balance that was just minted in rewards distributor
       _rewards_distributor.checkpoint_total_supply(); // checkpoint supply
 
-      _stratum.approve(address(_voter), weekly);
-      _voter.notifyRewardAmount(weekly);
+      _stratum.approve(address(_voter), _gauges);
+      _voter.notifyRewardAmount(_gauges);
 
       emit Mint(
         msg.sender,
