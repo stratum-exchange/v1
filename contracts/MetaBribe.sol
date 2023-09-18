@@ -766,7 +766,7 @@ contract MetaBribe is IMetaBribe, Constants {
 
       if (liquidity0 * liquidity1 > bestLiquidity) {
         bestLiquidity = liquidity0 * liquidity1;
-        bestAmountOut = IPair(pair1).current(tokenOut, intermediaryAmount);
+        bestAmountOut = IPair(pair1).current(transitCurrencies[i], intermediaryAmount);
       }
 
     }
