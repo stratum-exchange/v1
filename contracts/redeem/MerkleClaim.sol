@@ -49,7 +49,7 @@ contract MerkleClaim {
   /// @notice Allows claiming tokens if address is part of merkle tree
   /// @param amount of tokens owed to claimee
   /// @param proof merkle proof to prove address and amount are in tree
-  function claim(uint256 amount, bytes32[] calldata proof) external {
+  function claim(uint256 amount, bytes32[] calldata proof) external returns (uint256) {
     // Throw if address has already claimed tokens
     require(!hasClaimed[msg.sender], "ALREADY_CLAIMED");
 
@@ -69,5 +69,7 @@ contract MerkleClaim {
 
     // Emit claim event
     emit Claim(msg.sender, amount, tokenId);
+
+    return tokenId;
   }
 }
