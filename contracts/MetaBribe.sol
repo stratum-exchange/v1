@@ -728,88 +728,56 @@ contract MetaBribe is IMetaBribe, Constants {
   // price estimation functionality
   /////////////////////////////////
 
-  /// Uses TWAP of the route with largest liquidity for tokenIn (direct or using one intermediary hop)
-  /// @return TWAP price of the route (see params), with the largest liquidity score or 0 in case of no valid route
+  /// Uses TWAP of the route with best price for tokenIn (direct or using one intermediary hop)
+  /// @return bestAmountOut TWAP price of the route (see params), with the best price or 0 in case of no valid route
   function estimateValue(
     address tokenIn,
     uint amountIn,
     address tokenOut
-  ) external view returns (uint) {
+  ) external view returns (uint bestAmountOut) {
     if (tokenIn == tokenOut || amountIn == 0) {
       return amountIn;
     }
 
-    uint bestAmountOut = 0;
-    uint bestLiquidity;
-    address pair;
-
     // direct route
-    (pair, bestLiquidity) = getMostLiquidPair(tokenIn, tokenOut);
-    if (pair != address(0)) {
-      bestAmountOut = IPair(pair).current(tokenIn, amountIn);
-      bestLiquidity = bestLiquidity * bestLiquidity;
-    }
+    bestAmountOut = getBestConversion(tokenIn, tokenOut, amountIn);
 
     // routes with one hop via intermediate token
     for (uint i = 0; i < transitCurrencies.length; i++) {
-
-      uint intermediaryAmount = 0;
-      (address pair0, uint liquidity0) = getMostLiquidPair(tokenIn, transitCurrencies[i]);
-      if (pair0 == address(0)) {
-        continue;
-      }
-      intermediaryAmount = IPair(pair0).current(tokenIn, amountIn);
-
-      (address pair1, uint liquidity1) = getMostLiquidPair(transitCurrencies[i], tokenOut);
-      if (pair1 == address(0)) {
+      uint intermediaryAmount = getBestConversion(tokenIn, transitCurrencies[i], amountIn);
+      if (intermediaryAmount == 0) {
         continue;
       }
 
-      if (liquidity0 * liquidity1 > bestLiquidity) {
-        bestLiquidity = liquidity0 * liquidity1;
-        bestAmountOut = IPair(pair1).current(transitCurrencies[i], intermediaryAmount);
+      uint amountOut = getBestConversion(transitCurrencies[i], tokenOut, intermediaryAmount);
+      if (amountOut > bestAmountOut) {
+        bestAmountOut = amountOut;
       }
-
     }
-
-    return bestAmountOut;
   }
 
-  function getLiquidity(address _pair, address _token) internal view returns (uint) {
-    (,, uint r0, uint r1,, address t0, address t1) = IPair(_pair).metadata();
-    if (t0 == _token) {
-      return r0;
-    }
-    if (t1 == _token) {
-      return r1;
-    }
-    revert("token not in pair");
-  }
-
-  /// gets most liquid pool (either stable or variable) depending on
-  /// liquidity for token0 or zero address if both empty
-  function getMostLiquidPair(address token0, address token1)
-   internal view returns (address bestPair, uint bestLiquidity)
+  /// @return best conversion rate (max out amount), from stable or volatile pair, based on TWAP prices
+  /// @notice Fetching TWAP price reverts if a relevant pool has been created in the same block, so flashloans can't
+  ///         be used to manipulate the price by creating a temporary pool. In case tx reverts due to another pool
+  ///         creation in the same block, just retry the tx.
+  function getBestConversion(address tokenIn, address tokenOut, uint amountIn)
+    internal view returns (uint)
   {
-    bestPair = address(0);
-    bestLiquidity = 0;
-
-    address pair = getPairFor(token0, token1, true);
-    if (getPairFactory().isPair(pair)) {
-      bestLiquidity = getLiquidity(pair, token0);
-      if (bestLiquidity > 0) {
-        bestPair = pair;
-      }
+    address stablePair = getPairFor(tokenIn, tokenOut, true);
+    uint amountStable;
+    if (getPairFactory().isPair(stablePair)) {
+      amountStable = IPair(stablePair).current(tokenIn, amountIn);
     }
 
-    pair = getPairFor(token0, token1, false);
-    if (getPairFactory().isPair(pair)) {
-      uint liquidity = getLiquidity(pair, token0);
-      if (liquidity > bestLiquidity) {
-        bestLiquidity = liquidity;
-        bestPair = pair;
-      }
+    address volatilePair = getPairFor(tokenIn, tokenOut, false);
+    uint amountVolatile;
+    if (getPairFactory().isPair(volatilePair)) {
+      amountVolatile = IPair(volatilePair).current(tokenIn, amountIn);
     }
+
+    return amountStable > amountVolatile
+      ? amountStable
+      : amountVolatile;
   }
 
   function getPairFor(
