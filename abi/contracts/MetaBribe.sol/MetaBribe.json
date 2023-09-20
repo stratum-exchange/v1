@@ -270,7 +270,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "bestAmountOut",
         "type": "uint256"
       }
     ],
