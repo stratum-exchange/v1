@@ -24,7 +24,7 @@ contract Minter is IMinter, Constants {
   IVotingEscrow public immutable _ve;
   IRewardsDistributor public immutable _rewards_distributor;
   IMetaBribe public immutable _meta_bribe;
-  uint public weekly = 500_000 * 1e18; // represents a starting weekly emission of 750k STRAT (STRAT has 18 decimals)
+  uint public weekly = 500_000 * 1e18; // represents a starting weekly emission of 500k STRAT (STRAT has 18 decimals)
   uint public active_period;
   uint internal constant LOCK = SECONDS_PER_EPOCH * 52 * 1;
 
