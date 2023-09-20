@@ -452,6 +452,8 @@ contract MetaBribe is IMetaBribe, Constants {
       uint total_bribes_value_of_pool = IWrappedExternalBribe(wxBribe).getTotalBribesValue(_ts);
       uint all_votes_for_pool = votesCheckpointPerEpoch[_ts].votesPerPoolIndex[i];
 
+      terms.first_term_denominator += total_bribes_value_of_pool;
+
       // for each partner
       for (uint j = 0; j < partner_token_ids.length; j++) {
 
@@ -462,7 +464,6 @@ contract MetaBribe is IMetaBribe, Constants {
         if (partner_token_ids[j] == _tokenId) {
           terms.first_term_nominator_tkn += partner_bribes_value_of_pool;
         }
-        terms.first_term_denominator += total_bribes_value_of_pool;
 
         // second term (only if bribes occurred, to prevent division by zero)
         if (partner_bribes_value_of_pool > 0 && total_bribes_value_of_pool > 0 && partner_voting_power[j] > 0) {
