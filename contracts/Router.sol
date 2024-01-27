@@ -2,12 +2,11 @@
 pragma solidity 0.8.13;
 
 import "contracts/libraries/Math.sol";
-// import "contracts/interfaces/IERC20.sol";
+import "contracts/interfaces/IERC20.sol";
 import "contracts/interfaces/IPair.sol";
 import "contracts/interfaces/IPairFactory.sol";
 import "contracts/interfaces/IRouter.sol";
 import "contracts/interfaces/IWETH.sol";
-import "contracts/multipool/Swap.sol";
 
 contract Router is IRouter {
   address public immutable factory;
