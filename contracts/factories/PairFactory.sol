@@ -11,7 +11,11 @@ contract PairFactory is IPairFactory {
 
   uint256 public stableFee;
   uint256 public volatileFee;
-  uint256 public constant MAX_FEE = 50; // 0.5%
+  uint256 public constant MAX_FEE = 300; // 3%
+  // Override to indicate there is custom 0% fee - as a 0 value in the customFee mapping indicates
+  // that no custom fee rate has been set
+  uint256 public constant ZERO_FEE_INDICATOR = 420;
+
   address public feeManager;
   address public pendingFeeManager;
 
@@ -20,6 +24,7 @@ contract PairFactory is IPairFactory {
   address[] public allPairs;
   mapping(address => bool) public is3pool;
   mapping(address => bool) public isPair; // simplified check if its a pair, given that `stable` flag might not be available in peripherals
+  mapping(address => uint256) public customFee; // override for custom fees
 
   address internal _temp0;
   address internal _temp1;
@@ -87,8 +92,20 @@ contract PairFactory is IPairFactory {
     }
   }
 
-  function getFee(bool _stable) public view returns (uint256) {
-    return _stable ? stableFee : volatileFee;
+  function setCustomFee(address pool, uint256 fee) external {
+    require(msg.sender == feeManager, "not fee manager");
+    if (fee > MAX_FEE && fee != ZERO_FEE_INDICATOR) revert();
+    require(isPair[pool], "invalid pool");
+
+    customFee[pool] = fee;
+  }
+
+  function getFee(address pool, bool _stable) public view returns (uint256) {
+    uint fee = customFee[pool];
+    return
+      fee == ZERO_FEE_INDICATOR ? 0 : fee != 0 ? fee : _stable
+        ? stableFee
+        : volatileFee;
   }
 
   function pairCodeHash() external pure returns (bytes32) {
