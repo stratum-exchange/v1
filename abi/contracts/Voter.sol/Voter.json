@@ -504,19 +504,9 @@
         "type": "address"
       },
       {
-        "internalType": "address",
-        "name": "_token0",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_token1",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_token2",
-        "type": "address"
+        "internalType": "address[]",
+        "name": "_token",
+        "type": "address[]"
       },
       {
         "internalType": "address",

@@ -56,6 +56,19 @@
   },
   {
     "inputs": [],
+    "name": "ZERO_FEE_INDICATOR",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "acceptFeeManager",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -143,6 +156,25 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "customFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "feeManager",
     "outputs": [
@@ -157,6 +189,11 @@
   },
   {
     "inputs": [
+      {
+        "internalType": "address",
+        "name": "pool",
+        "type": "address"
+      },
       {
         "internalType": "bool",
         "name": "_stable",
@@ -346,6 +383,24 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "pool",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "fee",
+        "type": "uint256"
+      }
+    ],
+    "name": "setCustomFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
