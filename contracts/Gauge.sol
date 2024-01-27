@@ -88,9 +88,7 @@ contract Gauge is IGauge, Constants {
   event ClaimFees(address indexed from, uint claimed0, uint claimed1);
   event ClaimFees3Pool(
     address indexed from,
-    uint claimed0,
-    uint claimed1,
-    uint claimed2
+    uint[] claimed
   );
   event ClaimRewards(address indexed from, address indexed reward, uint amount);
 
@@ -178,7 +176,7 @@ contract Gauge is IGauge, Constants {
 
   function claimFeesFor3Pool(
     address _swapAddress
-  ) external lock returns (uint claimed0, uint claimed1, uint claimed2) {
+  ) external lock returns (uint[] memory claimed) {
     address factory = IVoter(voter).factory();
     require(IPairFactory(factory).is3pool(_swapAddress), "Not a 3pool");
     return _claimFeesFor3Pool(_swapAddress);
@@ -186,9 +184,9 @@ contract Gauge is IGauge, Constants {
 
   function _claimFeesFor3Pool(
     address _swapAddress
-  ) internal returns (uint claimed0, uint claimed1, uint claimed2) {
+  ) internal returns (uint[] memory) {
     if (!isForPair) {
-      return (0, 0, 0);
+      return new uint[](0);
     }
     require(_swapAddress != address(0));
     require(IVoter(voter).is3poolGauge(address(this)) == true, "Not a 3pool");
@@ -204,25 +202,16 @@ contract Gauge is IGauge, Constants {
         break;
       }
     }
-    address token0 = ISwap(_swapAddress).getTokenAddress(0);
-    address token1 = ISwap(_swapAddress).getTokenAddress(1);
-    address token2 = ISwap(_swapAddress).getTokenAddress(2);
-
-    if (claimed[0] > 0) {
-      _safeApprove(token0, internal_bribe, claimed[0]);
-      IBribe(internal_bribe).notifyRewardAmount(token0, claimed[0]);
-    }
-    if (claimed[1] > 0) {
-      _safeApprove(token1, internal_bribe, claimed[1]);
-      IBribe(internal_bribe).notifyRewardAmount(token1, claimed[1]);
-    }
-    if (claimed[2] > 0) {
-      _safeApprove(token2, internal_bribe, claimed[2]);
-      IBribe(internal_bribe).notifyRewardAmount(token2, claimed[2]);
+    address[] memory token = ISwap(_swapAddress).getTokensArray();
+    for (uint256 i = 0; i < token.length; i++) {
+      if (claimed[i] > 0) {
+        _safeApprove(token[i], internal_bribe, claimed[i]);
+        IBribe(internal_bribe).notifyRewardAmount(token[i], claimed[i]);
+      }
     }
 
-    emit ClaimFees3Pool(msg.sender, claimed[0], claimed[1], claimed[2]);
-    return (claimed[0], claimed[1], claimed[2]);
+    emit ClaimFees3Pool(msg.sender, claimed);
+    return claimed;
   }
 
   /**

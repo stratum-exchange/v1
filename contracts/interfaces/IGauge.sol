@@ -14,7 +14,7 @@ interface IGauge {
 
   function claimFeesFor3Pool(
     address _swapAddress
-  ) external returns (uint claimed0, uint claimed1, uint claimed2);
+  ) external returns (uint[] memory claimed);
 
   function left(address token) external view returns (uint);
 

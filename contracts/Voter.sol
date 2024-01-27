@@ -329,26 +329,21 @@ contract Voter is IVoter, Constants {
 
   function createGauge3pool(
     address _3pool,
-    address _token0,
-    address _token1,
-    address _token2,
+    address[] memory _token,
     address _wxBribeFactory
   ) external returns (address) {
     require(msg.sender == governor, "Not governor");
     require(gauges[_3pool] == address(0x0), "exists");
-    require(
-      isWhitelisted[_token0] && isWhitelisted[_token1] && isWhitelisted[_token2],
-      "!whitelisted"
-    );
-    address[] memory allowedRewards = new address[](4);
-    address[] memory internalRewards = new address[](3);
-    allowedRewards[0] = _token0;
-    allowedRewards[1] = _token1;
-    allowedRewards[2] = _token2;
-    allowedRewards[3] = base;
-    internalRewards[0] = _token0;
-    internalRewards[1] = _token1;
-    internalRewards[2] = _token2;
+    for (uint256 i = 0; i < _token.length; i++) {
+      require(isWhitelisted[_token[i]], "!whitelisted");
+    }
+    address[] memory allowedRewards = new address[](_token.length + 1);
+    address[] memory internalRewards = new address[](_token.length);
+    for (uint256 i = 0; i < _token.length; i++) {
+      allowedRewards[i] = _token[i];
+      internalRewards[i] = _token[i];
+    }
+    allowedRewards[_token.length] = base;
 
     address _internal_bribe = IBribeFactory(bribefactory).createInternalBribe(
       internalRewards
