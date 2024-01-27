@@ -647,14 +647,14 @@ contract MetaBribe is IMetaBribe, Constants {
     return _claimable(_tokenId, voting_escrow, _last_token_time);
   }
 
-  function claim(uint _tokenId) external returns (uint) {
+  function claim(uint _tokenId, uint _to) external returns (uint) {
     require(isPartner(msg.sender) == true, "not a partner");
     if (block.timestamp >= time_cursor) _checkpoint_total_supply();
     uint _last_token_time = last_token_time;
     _last_token_time = (_last_token_time / WEEK) * WEEK;
     uint amount = _claim(_tokenId, voting_escrow, _last_token_time);
     if (amount != 0) {
-      IVotingEscrow(voting_escrow).deposit_for(_tokenId, amount);
+      IVotingEscrow(voting_escrow).deposit_for(_to, amount);
       token_last_balance -= amount;
     }
     return amount;
