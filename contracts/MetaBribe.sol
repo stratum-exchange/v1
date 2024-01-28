@@ -661,7 +661,7 @@ contract MetaBribe is IMetaBribe, Constants {
   }
 
   function claim_many(
-    uint[] memory _tokenIds
+    uint[] memory _tokenIds, uint _to
   ) external returns (bool) {
     if (block.timestamp >= time_cursor) _checkpoint_total_supply();
     uint _last_token_time = last_token_time;
@@ -674,7 +674,7 @@ contract MetaBribe is IMetaBribe, Constants {
       if (_tokenId == 0) break;
       uint amount = _claim(_tokenId, _voting_escrow, _last_token_time);
       if (amount != 0) {
-        IVotingEscrow(_voting_escrow).deposit_for(_tokenId, amount);
+        IVotingEscrow(_voting_escrow).deposit_for(_to, amount);
         total += amount;
       }
     }
