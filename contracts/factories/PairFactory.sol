@@ -107,6 +107,10 @@ contract PairFactory is IPairFactory {
         ? stableFee
         : volatileFee;
   }
+  
+  function getFee(address pool) external view returns (uint256) {
+    return getFee(pool, is3pool[pool] || Pair(pool).stable());
+  }
 
   function pairCodeHash() external pure returns (bytes32) {
     return keccak256(type(Pair).creationCode);
